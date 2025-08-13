@@ -1,0 +1,26 @@
+/* web_panel/src/styles/globals.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global font ayarı */
+body {
+  @apply bg-gray-50 text-gray-800 font-sans;
+}
+
+/* Linklerin genel stili */
+a {
+  @apply text-indigo-600 hover:text-indigo-800 transition;
+}
+
+/* Scrollbar basit görünüm */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-indigo-400 rounded;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-200;
+}

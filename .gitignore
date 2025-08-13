@@ -1,0 +1,268 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.sqlite3
+*.sqlite
+database.db
+*.db-journal
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+log/
+logging/
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Node.js (for web_panel)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+web_panel/node_modules/
+web_panel/.pnp
+web_panel/.pnp.js
+web_panel/coverage/
+web_panel/build/
+web_panel/dist/
+web_panel/.next/
+web_panel/out/
+web_panel/.nyc_output
+web_panel/.cache/
+web_panel/.parcel-cache
+web_panel/.env.local
+web_panel/.env.development.local
+web_panel/.env.test.local
+web_panel/.env.production.local
+web_panel/npm-debug.log*
+web_panel/yarn-debug.log*
+web_panel/yarn-error.log*
+web_panel/.pnpm-debug.log*
+
+# TypeScript
+web_panel/*.tsbuildinfo
+web_panel/next-env.d.ts
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+.cache/
+.temp/
+.tmp/
+*~
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*.rej
+*.swp
+*.swo
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-selfcheck.json
+
+# Distribution / packaging
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.venv/
+venv/
+ENV/
+
+# Database dumps
+*.sql
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+
+# Config files with secrets
+config.json
+secrets.json
+credentials.json
+service-account.json
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.yarn-integrity
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Temporary folders
+tmp/
+temp/

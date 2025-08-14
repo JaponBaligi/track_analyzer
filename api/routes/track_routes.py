@@ -5,6 +5,7 @@ from api.services.track_service import evaluate_unplayable_track, update_stream_
 from spotify_client.stream_data import get_track_stream_data
 from utils.logger import get_logger
 from db.track_storage import TrackStorage
+import json
 
 router = APIRouter(tags=["Track"])
 logger = get_logger(__name__)
@@ -17,18 +18,44 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
     logger.debug(f"Evaluating track popularity/stream for track_id: {track_id}")
 
     try:
-        # Önce mevcut popülarite bilgisini al
+        # Popülarite bilgisini al
         popularity_data = evaluate_unplayable_track(track_id)
 
-        # Ardından sadece historical stream verisini çek
+        # Historical stream verisini al
         stream_data = get_track_stream_data(track_id)
 
-        # Birleştirip döndür
-        return {
+        # Raw historical veriyi al
+        raw_historical = stream_data.get("historicalData", [])
+
+        # [[date, streams], ...] formatını [{date:..., streams:...}, ...] formatına çevir
+        historical_list = []
+        if isinstance(raw_historical, list):
+            for item in raw_historical:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    historical_list.append({
+                        "date": item[0],
+                        "streams": item[1]
+                    })
+                elif isinstance(item, dict) and "date" in item and "streams" in item:
+                    historical_list.append(item)  # Zaten doğru formatta ise ekle
+
+        response_data = {
             "track_id": track_id,
             "popularity": popularity_data.get("popularity"),
-            "historical": stream_data.get("historicalData", {})
+            "historical": historical_list
         }
+
+        # JSON olarak logla
+        print("\n=== /tracks/evaluate RESPONSE ===")
+        try:
+            print(json.dumps(response_data, indent=2, ensure_ascii=False))
+        except Exception as e:
+            print(f"JSON dump error: {e}")
+            print(response_data)
+        print("=================================\n")
+
+        return response_data
+
     except Exception as e:
         logger.error(f"Error evaluating track {track_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -36,9 +63,6 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
 
 @router.get("/unplayable")
 def fetch_unplayable_tracks():
-    """
-    Veritabanındaki çalınamayan şarkıları detaylı olarak döner.
-    """
     logger.debug("Fetching unplayable tracks from DB...")
     storage = TrackStorage()
     try:
@@ -49,9 +73,6 @@ def fetch_unplayable_tracks():
 
 @router.post("/stream/update")
 def update_stream_data(track_id: str = Query(..., description="Spotify Track ID")):
-    """
-    Belirtilen track için stream verisini günceller.
-    """
     logger.debug(f"Updating stream data for track {track_id}")
     result = update_stream_data_for_unplayable(track_id)
     if result["status"] == "error":

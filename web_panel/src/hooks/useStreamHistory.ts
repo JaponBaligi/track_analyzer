@@ -1,37 +1,49 @@
 // web_panel/src/hooks/useStreamHistory.ts
 import { useState } from "react";
-import { evaluateTrack } from "../api/spotify";
+import axios from "axios";
 
 export function useStreamHistory() {
-  const [loadingTrackIds, setLoadingTrackIds] = useState<string[]>([]);
+  const [streamHistory, setStreamHistory] = useState<Record<string, any[]>>({});
   const [errorTrackIds, setErrorTrackIds] = useState<string[]>([]);
-  const [streamHistory, setStreamHistory] = useState<
-    Record<string, { date: string; streams: number }[]>
-  >({});
+  const [loadingTrackIds, setLoadingTrackIds] = useState<string[]>([]);
 
   const fetchStreamHistory = async (trackId: string) => {
-    if (loadingTrackIds.includes(trackId)) return;
+    console.log(`[DEBUG] fetchStreamHistory called for trackId=${trackId}`);
+    setLoadingTrackIds((prev) => [...prev, trackId]);
+    setErrorTrackIds((prev) => prev.filter((id) => id !== trackId));
 
-    setLoadingTrackIds(ids => [...ids, trackId]);
     try {
-      const response = await evaluateTrack(trackId);
+      const response = await axios.get(`/api/tracks/evaluate?track_id=${trackId}`);
+      console.log("[DEBUG] /tracks/evaluate response.data =", response.data);
 
-      if (Array.isArray(response) && response.length > 0) {
-        setStreamHistory(prev => ({ ...prev, [trackId]: response }));
-      } else {
-        setErrorTrackIds(ids => [...ids, trackId]);
+      // API'den gelen veri kontrolü
+      const historical = response.data?.historical;
+      if (!historical) {
+        console.warn(`[WARN] No 'historical' key found in API response for trackId=${trackId}`);
+        setErrorTrackIds((prev) => [...prev, trackId]);
+        return;
       }
-    } catch {
-      setErrorTrackIds(ids => [...ids, trackId]);
+
+      // Tarih ve stream sayılarını logla
+      console.log(`[DEBUG] Historical data for trackId=${trackId}:`, historical);
+
+      if (Array.isArray(historical) && historical.length > 0) {
+        setStreamHistory((prev) => ({
+          ...prev,
+          [trackId]: historical,
+        }));
+      } else {
+        console.warn(`[WARN] Historical array is empty for trackId=${trackId}`);
+        setErrorTrackIds((prev) => [...prev, trackId]);
+      }
+    } catch (error) {
+      console.error(`[ERROR] Failed to fetch stream history for ${trackId}:`, error);
+      setErrorTrackIds((prev) => [...prev, trackId]);
     } finally {
-      setLoadingTrackIds(ids => ids.filter(id => id !== trackId));
+      setLoadingTrackIds((prev) => prev.filter((id) => id !== trackId));
     }
   };
 
-  return {
-    loadingTrackIds,
-    errorTrackIds,
-    streamHistory,
-    fetchStreamHistory
-  };
+  return { streamHistory, errorTrackIds, loadingTrackIds, fetchStreamHistory };
 }
+

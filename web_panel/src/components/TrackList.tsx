@@ -6,6 +6,7 @@ import { cn } from "../lib/utils";
 import { Track } from "../types";
 import { evaluateTrack } from "../api/spotify";
 import { formatDuration, formatNumber, formatImageUrl } from "../utils/format";
+import { StreamHistoryChart } from "./StreamHistoryChart"; // Grafiği ekledik
 
 type TrackListProps = {
   tracks: Track[];
@@ -23,6 +24,9 @@ export const TrackList: React.FC<TrackListProps> = ({ tracks, className, region 
   const [loadingTrackIds, setLoadingTrackIds] = useState<string[]>([]);
   const [errorTrackIds, setErrorTrackIds] = useState<string[]>([]);
   const [streamCounts, setStreamCounts] = useState<Record<string, number>>({});
+  const [historicalData, setHistoricalData] = useState<
+    Record<string, { date: string; streams: number }[]>
+  >({});
 
   if (!tracks.length || uniqueUnplayableTracks.length === 0) {
     return (
@@ -42,7 +46,11 @@ export const TrackList: React.FC<TrackListProps> = ({ tracks, className, region 
       const response = await evaluateTrack(trackId);
       if (response.stream_count !== undefined && response.stream_count !== null) {
         setStreamCounts((prev) => ({ ...prev, [trackId]: response.stream_count }));
-      } else {
+      }
+      if (response.historical && Array.isArray(response.historical)) {
+        setHistoricalData((prev) => ({ ...prev, [trackId]: response.historical }));
+      }
+      if (response.stream_count === undefined && !response.historical) {
         setErrorTrackIds((ids) => [...ids, trackId]);
       }
     } catch {
@@ -58,20 +66,20 @@ export const TrackList: React.FC<TrackListProps> = ({ tracks, className, region 
         const isLoading = loadingTrackIds.includes(track.track_id);
         const isError = errorTrackIds.includes(track.track_id);
         const streamCount = streamCounts[track.track_id];
+        const history = historicalData[track.track_id] || [];
 
-        // Artist fallback
         const displayArtists =
           track.artist_names?.length > 0
-            ? track.artist_name.join(", ")
+            ? track.artist_names.join(", ")
             : track.artist_name || "Bilinmiyor";
-        // Spotify URL fallback
+
         const spotifyUrl =
           track.spotify_url || `https://open.spotify.com/track/${track.track_id}`;
 
-        // Albüm fallback
-        const albumName = track.album_name && track.album_name.trim() !== ""
-          ? track.album_name
-          : "Single";
+        const albumName =
+          track.album_name && track.album_name.trim() !== ""
+            ? track.album_name
+            : "Single";
 
         return (
           <div
@@ -119,6 +127,13 @@ export const TrackList: React.FC<TrackListProps> = ({ tracks, className, region 
                 <span className="text-sm text-red-600 mt-1">
                   Stream verisi alınırken hata oluştu.
                 </span>
+              )}
+
+              {/* Grafik burada */}
+              {history.length > 0 && (
+                <div className="mt-4">
+                  <StreamHistoryChart data={history} />
+                </div>
               )}
             </div>
 

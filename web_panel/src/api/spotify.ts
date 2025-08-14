@@ -47,7 +47,6 @@ export const getUnplayableTracks = async (): Promise<Track[]> => {
   }
 };
 
-// Yeni: Bir track için stream count bilgisi alır
 export const evaluateTrack = async (trackId: string) => {
   try {
     const response = await axios.get("/tracks/evaluate", {

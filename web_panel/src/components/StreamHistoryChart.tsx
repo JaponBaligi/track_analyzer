@@ -1,10 +1,17 @@
 // web_panel/src/components/StreamHistoryChart.tsx
 import React from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 import { formatNumber } from "../utils/format";
 
+type StreamData = {
+  date: string;
+  streams: number;
+};
+
 type Props = {
-  data: { date: string; streams: number }[];
+  data: StreamData[];
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -20,7 +27,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
-  if (!data || data.length < 2) return null;
+  if (!data || data.length === 0) {
+    return <div className="text-gray-500">No stream history available</div>;
+  }
 
   return (
     <div className="w-full h-64">
@@ -30,7 +39,7 @@ export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
           <XAxis dataKey="date" />
           <YAxis tickFormatter={formatNumber} />
           <Tooltip content={<CustomTooltip />} />
-          <Line type="monotone" dataKey="streams" stroke="#8884d8" dot />
+          <Line type="monotone" dataKey="streams" stroke="#4f46e5" dot />
         </LineChart>
       </ResponsiveContainer>
     </div>

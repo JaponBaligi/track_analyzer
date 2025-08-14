@@ -8,7 +8,6 @@ from spotify_client.track import get_track_info
 logger = get_logger(__name__)
 sp = get_spotify_client()
 
-
 def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
     """
     Bir sanatçının adını kullanarak Spotify'da public playlistleri arar.
@@ -67,15 +66,9 @@ def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
         return []
 
 
-from spotify_client.client import get_spotify_client
-from utils.logger import get_logger
-from db.track_storage import TrackStorage
-from spotify_client.track import get_track_info
-
 logger = get_logger(__name__)
 sp = get_spotify_client()
 
-...
 
 def scan_playlist_for_unplayable_tracks(playlist_id: str, market: str | None = None) -> list[dict]:
     logger.debug(f"Playlist taranıyor: {playlist_id} (market={market})")

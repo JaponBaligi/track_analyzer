@@ -1,4 +1,4 @@
-# spotify_monitoring/db/track_storage.py
+# db/track_storage.py
 
 import sqlite3
 import json
@@ -32,17 +32,15 @@ class TrackStorage:
             )
         """)
 
-        # Stream verisi tablosu
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS track_streams (
                 track_id TEXT PRIMARY KEY,
                 historical_streams TEXT,
-                current_streams INTEGER,
                 last_updated TEXT
             )
         """)
         self.conn.commit()
-
+        
     def save_unplayable_track(self, track_data: dict):
         """
         Track verisini (Spotify'dan çekilmiş tam veri) kaydeder veya günceller.
@@ -84,23 +82,20 @@ class TrackStorage:
             logger.info(f"Unplayable track saved/updated: {track_data['id']}")
         except Exception as e:
             logger.error(f"Error saving unplayable track {track_data['id']}: {e}")
-
-    def save_track_stream_data(self, track_id: str, historical_data: dict, current_data: dict):
+    def save_track_stream_data(self, track_id: str, historical_data: dict):
         hist_json = json.dumps(historical_data)
-        current_count = current_data.get("streamCount", 0)
         last_updated = datetime.datetime.utcnow().isoformat()
 
         self.c.execute("""
-            INSERT INTO track_streams (track_id, historical_streams, current_streams, last_updated)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO track_streams (track_id, historical_streams, last_updated)
+            VALUES (?, ?, ?)
             ON CONFLICT(track_id) DO UPDATE SET
                 historical_streams=excluded.historical_streams,
-                current_streams=excluded.current_streams,
                 last_updated=excluded.last_updated
-        """, (track_id, hist_json, current_count, last_updated))
+        """, (track_id, hist_json, last_updated))
 
         self.conn.commit()
-        logger.info(f"Stream data saved for track {track_id}")
+        logger.info(f"Historical stream data saved for track {track_id}")
 
     def get_unplayable_tracks(self) -> list[dict]:
         try:
@@ -108,7 +103,7 @@ class TrackStorage:
                 SELECT 
                     t.id, t.name, t.artist_names, t.album_name, t.duration_ms, t.popularity,
                     t.is_playable, t.spotify_url, t.image_url, t.playlist_id, t.added_at,
-                    ts.historical_streams, ts.current_streams, ts.last_updated
+                    ts.historical_streams, ts.last_updated
                 FROM unplayable_tracks t
                 LEFT JOIN track_streams ts ON t.id = ts.track_id
                 WHERE t.is_playable = 0
@@ -118,9 +113,7 @@ class TrackStorage:
             result = []
             for row in rows:
                 d = dict(zip(columns, row))
-                # artist_names JSON string -> liste dönüştür
                 d["artist_names"] = json.loads(d["artist_names"]) if d["artist_names"] else []
-                # historical_streams JSON string -> dict
                 d["historical_streams"] = json.loads(d["historical_streams"]) if d["historical_streams"] else {}
                 result.append(d)
             logger.info(f"{len(result)} unplayable tracks fetched from DB")
@@ -130,12 +123,14 @@ class TrackStorage:
             return []
 
     def close(self):
-        self.conn.close()
+        if self.conn:
+            self.conn.close()
+    
 
-# Fonksiyonu modül dışına aç (import için)
+# Modül dışı fonksiyon
 def save_track_stream_data(track_id: str, historical_data: dict, current_data: dict):
     storage = TrackStorage()
     try:
-        storage.save_track_stream_data(track_id, historical_data, current_data)
+        storage.save_track_stream_data(track_id, historical_data)
     finally:
         storage.close()

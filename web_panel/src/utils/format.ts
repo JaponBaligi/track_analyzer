@@ -19,4 +19,15 @@ export function formatImageUrl(url?: string | null): string {
   return url ?? "/default-image.png";  // default-image.png projenin public klasöründe olabilir
 }
 
-
+export function formatStreamHistory(
+  history: { date: string; streams: number }[]
+): { date: string; streams: number }[] {
+  return history
+    .map(item => ({
+      date: item.date,
+      streams: item.streams,
+    }))
+    .filter((v, i, self) => 
+      i === self.findIndex(t => t.date === v.date)
+    );
+}

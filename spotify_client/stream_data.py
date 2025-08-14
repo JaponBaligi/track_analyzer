@@ -4,7 +4,6 @@ import os
 import time
 import requests
 from utils.logger import get_logger
-from alerts.trigger import notify_rights_holder
 from db.track_storage import save_track_stream_data
 from db.stream_failures import (
     create_failed_tracks_table, is_track_failed, mark_track_as_failed
@@ -51,18 +50,24 @@ def fetch_with_retry(url: str, headers: dict, retries: int = RETRY_COUNT, delay:
 
 
 def get_historical_stream_count(track_id: str) -> dict:
+    """
+    RapidAPI'den gelen cevabı normalize eder.
+    API bazen liste döndürdüğü için, listeyi {"streams": [...]} formatına çevirir.
+    """
     url = f"{BASE_URL}/{track_id}/streams"
     logger.debug(f"Fetching historical stream count for track_id={track_id}")
-    return fetch_with_retry(url, HEADERS)
+    resp = fetch_with_retry(url, HEADERS)
 
-
-def get_current_stream_count(track_id: str) -> dict:
-    url = f"{BASE_URL}/{track_id}/streams/current"
-    logger.debug(f"Fetching current stream count for track_id={track_id}")
-    return fetch_with_retry(url, HEADERS)
+    # Liste dönerse dict içine sar
+    if isinstance(resp, list):
+        return {"streams": resp}
+    return resp
 
 
 def get_stream_data_for_unplayable(track_data: dict):
+    """
+    Sadece historical stream verisini alır.
+    """
     if track_data.get("is_playable", True):
         logger.info(f"Track {track_data.get('id')} playable, stream data alınmayacak.")
         return
@@ -77,44 +82,30 @@ def get_stream_data_for_unplayable(track_data: dict):
         return
 
     historical = get_historical_stream_count(track_id)
-    current = get_current_stream_count(track_id)
 
-    if (
-        historical
-        and current
-        and "error" not in historical
-        and "error" not in current
-        and historical.get("streams") is not None
-        and current.get("streamCount") is not None
-    ):
+    if historical and "error" not in historical and historical.get("streams") is not None:
         stream_data = {
-            "historical_streams": historical.get("streams"),
-            "current_stream_count": current.get("streamCount"),
+            "historical_streams": historical.get("streams")
         }
         save_track_stream_data(track_data, stream_data)
-        notify_rights_holder(track_data, stream_data)
     else:
-        logger.warning(
-            f"Stream verileri eksik veya hatalı: historical={historical}, current={current}"
-        )
+        logger.warning(f"Stream verileri eksik veya hatalı: historical={historical}")
         mark_track_as_failed(track_id)
+
 
 def get_track_stream_data(track_id: str) -> dict:
     """
-    Verilen track_id için hem current hem historical stream verisini döner.
+    Verilen track_id için sadece historical stream verisini döner.
     """
     historical = get_historical_stream_count(track_id)
-    current = get_current_stream_count(track_id)
 
-    if "error" in historical or "error" in current:
+    if "error" in historical:
         return {
             "error": True,
-            "historicalData": historical if "error" not in historical else None,
-            "streamCount": current.get("streamCount") if "error" not in current else None
+            "historicalData": None
         }
 
     return {
         "error": False,
-        "historicalData": historical.get("streams"),
-        "streamCount": current.get("streamCount")
+        "historicalData": historical.get("streams")
     }

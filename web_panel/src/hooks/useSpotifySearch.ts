@@ -54,24 +54,6 @@ export const useSpotifySearch = () => {
 
       setPlaylists(playlists);
 
-      // Eğer track API endpoint varsa buradan çekip benzer şekilde setTrackResults yapabilirsin
-      // Örnek:
-      // const trackResponse = await fetch(`/api/tracks?artist=${encodeURIComponent(artistName)}`);
-      // if (!trackResponse.ok) throw new Error("Tracks fetch failed");
-      // const trackData: ApiTrack[] = await trackResponse.json();
-      // const tracks = trackData.map((t) => ({
-      //   track_id: t.track_id,
-      //   track_name: t.track_name,
-      //   artist_names: [t.artist_name],
-      //   album_name: "",
-      //   duration_ms: 0,
-      //   popularity: 0,
-      //   is_playable: t.is_playable,
-      //   spotify_url: "",
-      //   image_url: null,
-      // }));
-      // setTrackResults(tracks);
-
       setLoading(false);
     } catch (err: any) {
       setError(err.message || "Unknown error");

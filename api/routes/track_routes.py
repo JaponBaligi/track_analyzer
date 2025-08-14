@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 @router.get("/evaluate")
 def track_evaluation(track_id: str = Query(..., description="Spotify Track ID")):
     """
-    Verilen unplayable track ID için popülarite ve stream count bilgilerini döner.
+    Verilen unplayable track ID için popülarite ve sadece historical stream bilgilerini döner.
     """
     logger.debug(f"Evaluating track popularity/stream for track_id: {track_id}")
 
@@ -20,19 +20,19 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
         # Önce mevcut popülarite bilgisini al
         popularity_data = evaluate_unplayable_track(track_id)
 
-        # Ardından stream verisini çek
+        # Ardından sadece historical stream verisini çek
         stream_data = get_track_stream_data(track_id)
 
         # Birleştirip döndür
         return {
             "track_id": track_id,
             "popularity": popularity_data.get("popularity"),
-            "stream_count": stream_data.get("streamCount"),
             "historical": stream_data.get("historicalData", {})
         }
     except Exception as e:
         logger.error(f"Error evaluating track {track_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/unplayable")
 def fetch_unplayable_tracks():

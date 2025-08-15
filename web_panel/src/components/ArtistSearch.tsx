@@ -1,5 +1,3 @@
-// web_panel/src/components/ArtistSearch.tsx
-
 import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { scanArtist } from "../api/spotify";
@@ -7,6 +5,7 @@ import { Search } from "lucide-react";
 
 const ArtistSearch = () => {
   const [input, setInput] = useState("");
+  const [depth, setDepth] = useState(2); // Varsayılan derinlik
   const {
     setArtist,
     setArtistResults,
@@ -21,19 +20,17 @@ const ArtistSearch = () => {
   const handleSearch = async () => {
     if (!input.trim()) return;
 
-    // Önceki sonuçları temizle
     setArtist("");
     setArtistResults([]);
     setPlaylists([]);
     setTrackResults([]);
     setError(null);
-
     setLoading(true);
 
     try {
-      const result = await scanArtist(input, region);
+      const result = await scanArtist(input, region, depth);
 
-      setArtist(result.artist.name);
+      setArtist(result.artist.name || result.artist);
       setArtistResults(result.related_artists || []);
       setPlaylists(result.playlists || []);
       setTrackResults(result.tracks || []);
@@ -60,6 +57,16 @@ const ArtistSearch = () => {
           placeholder="Sanatçı adı girin..."
           className="flex-1 px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
           disabled={loading}
+        />
+        <input
+          type="number"
+          value={depth}
+          min={1}
+          max={5}
+          onChange={(e) => setDepth(Number(e.target.value))}
+          className="w-20 px-2 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          disabled={loading}
+          title="Tarama derinliği"
         />
         <button
           onClick={handleSearch}

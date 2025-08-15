@@ -38,7 +38,10 @@ def pseudo_recursive_scan(
 
     try:
         while current_depth < max_depth and to_scan_playlists:
-            logger.info(f"Derinlik {current_depth + 1}: {len(to_scan_playlists)} playlist taranacak")
+            logger.info(
+                f"[DEPTH LOG] Şu an {current_depth + 1}. derinlikteyiz / max_depth={max_depth} "
+                f"— taranacak playlist sayısı: {len(to_scan_playlists)}"
+            )
             next_level_owners = set()
             new_playlists = []
 

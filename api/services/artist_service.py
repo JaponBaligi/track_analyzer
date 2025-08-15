@@ -7,10 +7,10 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def start_artist_scan(artist_name: str, market: str | None = None) -> dict:
+def start_artist_scan(artist_name: str, market: str | None = None, max_depth: int = 2) -> dict:
     try:
-        logger.info(f"Starting pseudo-recursive scan for: {artist_name} (market={market})")
-        scan_result = pseudo_recursive_scan(artist_name, max_depth=2, market=market)
+        logger.info(f"Starting pseudo-recursive scan for: {artist_name} (market={market}, max_depth={max_depth})")
+        scan_result = pseudo_recursive_scan(artist_name, max_depth=max_depth, market=market)
 
         # Güvenli artist_names dönüştürme
         if "tracks" in scan_result and isinstance(scan_result["tracks"], list):
@@ -39,5 +39,3 @@ def fetch_artist_info(artist_name: str) -> dict:
     except Exception as e:
         logger.exception(f"Failed to fetch artist info for: {artist_name}")
         return {"error": "Sanatçı bilgileri alınırken hata oluştu."}
-
-

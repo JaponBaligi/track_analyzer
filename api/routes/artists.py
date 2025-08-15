@@ -8,7 +8,6 @@ from utils.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
-
 @router.post("/scan", status_code=202)
 async def scan_artist(request: ArtistScanRequest):
     """
@@ -16,14 +15,15 @@ async def scan_artist(request: ArtistScanRequest):
     """
     artist_name = request.artist_name.strip()
     market = request.region
+    max_depth = request.max_depth or 2  # <-- Yeni eklendi
 
     if not artist_name:
         logger.warning("Received empty artist name in scan request.")
         raise HTTPException(status_code=400, detail="Artist name is required")
 
     try:
-        logger.info(f"Artist scan started for: {artist_name} with market={market}")
-        scan_result = scan_artist_playlists(artist_name, market=market)
+        logger.info(f"Artist scan started for: {artist_name} with market={market}, max_depth={max_depth}")
+        scan_result = scan_artist_playlists(artist_name, market=market, max_depth=max_depth)  # <-- Yeni parametre
         logger.info(f"Artist scan completed for: {artist_name}")
 
         return {
@@ -36,7 +36,6 @@ async def scan_artist(request: ArtistScanRequest):
     except Exception as e:
         logger.exception(f"Error scanning artist: {artist_name}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 @router.get("/info", response_model=ArtistInfoResponse)
 async def get_artist_basic_info(artist_name: str):
@@ -52,3 +51,4 @@ async def get_artist_basic_info(artist_name: str):
     except Exception as e:
         logger.exception(f"Error fetching artist info for: {artist_name}")
         raise HTTPException(status_code=500, detail="Internal server error")
+

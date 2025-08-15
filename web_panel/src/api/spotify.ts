@@ -1,4 +1,5 @@
 //api/spotify.ts
+
 import axios from "./axiosInstance";
 import { Artist, Playlist, Track } from "../types";
 
@@ -14,11 +15,12 @@ export const searchArtist = async (artistName: string): Promise<Artist[]> => {
   }
 };
 
-export const scanArtist = async (artistName: string, region: string) => {
+export const scanArtist = async (artistName: string, region: string, depth: number) => {
   try {
     const response = await axios.post("/artists/scan", {
       artist_name: artistName,
-      region: region, 
+      region: region,
+      max_depth: depth
     });
     return response.data;
   } catch (error) {
@@ -58,4 +60,3 @@ export const evaluateTrack = async (trackId: string) => {
     throw error;
   }
 };
-

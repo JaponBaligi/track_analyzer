@@ -3,14 +3,13 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-
 class ArtistScanRequest(BaseModel):
     """
     Tarama işlemi başlatmak için sanatçı adı bilgisi ve isteğe bağlı bölge.
     """
     artist_name: str = Field(..., description="Sanatçının tam adı")
     region: Optional[str] = Field(None, description="Spotify market kodu (örn. TR, US). None ise global arama.")
-
+    max_depth: Optional[int] = Field(2, description="Sanatçı tarama derinliği (default=2)")
 
 class ArtistInfoResponse(BaseModel):
     """

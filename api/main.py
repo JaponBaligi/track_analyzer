@@ -7,26 +7,27 @@ from utils.logger import get_logger
 from db.track_storage import TrackStorage
 
 logger = get_logger(__name__)
+# Veritabanı migration/kolon kontrolleri için bir kez aç-kapat
 storage = TrackStorage()
 storage.close()
+
 app = FastAPI(
     title="Spotify Track Analyzer API",
-    version="1.0.0"
+    version="1.1.0"
 )
 
-# CORS: Web panelin erişimi için gerekli
+# CORS (gerekirse prod domain'inle sınırla)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Production'da buraya domain yazmalısın
+    allow_origins=["*"],  # prod'da sabitle
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# API route'ları
+# Ana API router
 app.include_router(api_router, prefix="/api")
 
 @app.get("/")
 def root():
     return {"message": "Spotify Track Analyzer API çalışıyor."}
-

@@ -267,3 +267,9 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+
+#passwords
+
+pass1
+pass2

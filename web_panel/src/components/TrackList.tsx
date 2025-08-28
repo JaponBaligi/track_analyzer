@@ -30,7 +30,7 @@ export const TrackList: React.FC<TrackListProps> = ({ tracks, className, region 
 
   if (!tracks.length || uniqueUnplayableTracks.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground italic px-4 py-2">
+      <p className="text-sm text-center text-muted-foreground italic px-4 py-2">
         Aramaya devam et; tarih arayıp bulamayanları unutulmuşluğun sessizliğine gömer.
       </p>
     );

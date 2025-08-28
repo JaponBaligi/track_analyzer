@@ -14,7 +14,7 @@ const Home: React.FC = () => {
 
   return (
     <main className="container mx-auto px-4 py-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">Spotify Monitoring</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Unplayable Track Arama</h1>
 
       <section aria-label="Sanatçı Arama" className="mb-10">
         <ArtistSearch />
@@ -76,7 +76,6 @@ const Home: React.FC = () => {
 
       {playlists.length > 0 && (
         <section aria-label="Çalma Listeleri" className="mb-10">
-          <h2 className="text-2xl font-semibold mb-4">Çalma Listeleri</h2>
           <div className="flex flex-wrap gap-6 overflow-x-auto pb-4">
             {playlists
               .filter((playlist) => (playlist.tracks ?? []).some((track) => !track.is_playable))

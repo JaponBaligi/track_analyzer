@@ -5,7 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router as api_router
 from utils.logger import get_logger
 from db.track_storage import TrackStorage
+from dotenv import load_dotenv
+from pathlib import Path
 
+env_path = Path(__file__).parent.parent / "config" / ".env"
+load_dotenv(dotenv_path=env_path)
 logger = get_logger(__name__)
 # Veritabanı migration/kolon kontrolleri için bir kez aç-kapat
 storage = TrackStorage()

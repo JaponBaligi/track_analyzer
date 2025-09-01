@@ -4,11 +4,16 @@ import hmac
 import time
 from typing import Optional, Literal, Dict, Any
 from jose import jwt, JWTError
+from dotenv import load_dotenv
+from pathlib import Path
+
+env_path = Path(__file__).parent.parent / "config" / ".env"
+load_dotenv(dotenv_path=env_path)
 
 ALGORITHM = os.getenv("JWT_ALGORITHM")
 USER1_PASSWORD = os.getenv("USER1_PASSWORD", "")
 USER2_PASSWORD = os.getenv("USER2_PASSWORD", "")
-JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME__VERY_LONG_RANDOM")
+JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "10080"))  # 7 gün
 
 Owner = Literal["kullanici1", "kullanici2"]
@@ -40,3 +45,5 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
+
+print(f"USER1: {len(USER1_PASSWORD)}, USER2: {len(USER2_PASSWORD)}")

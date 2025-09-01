@@ -19,7 +19,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-white p-2 rounded shadow text-sm">
         <div className="font-semibold">{label}</div>
-        <div>Total Streams: {formatNumber(payload[0].value)}</div>
+        <div>Toplam Dinleme: {formatNumber(payload[0].value)}</div>
       </div>
     );
   }
@@ -28,7 +28,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
   if (!data || data.length === 0) {
-    return <div className="text-gray-500">No stream history available</div>;
+    return <div className="text-gray-500">Mevcut Stream Verisi Bulunamadı</div>;
   }
 
   return (

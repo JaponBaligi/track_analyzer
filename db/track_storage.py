@@ -143,6 +143,33 @@ class TrackStorage:
         except Exception as e:
             logger.exception("save_track_stream_data hata: %s", e)
 
+    def save_unplayable_track_if_new(self, track_data: dict, owner: Optional[str] = None) -> bool:
+        """
+        Track zaten DB’de yoksa kaydeder, varsa hiçbir şey yapmaz.
+        True -> yeni kaydedildi
+        False -> zaten vardı
+        """
+        try:
+            track_id = track_data.get("id")
+            if not track_id:
+                return False
+
+            # DB'de var mı kontrol et
+            self.c.execute(
+                "SELECT 1 FROM unplayable_tracks WHERE id = ? AND (owner = ? OR owner IS NULL)",
+                (track_id, owner)
+            )
+            exists = self.c.fetchone()
+            if exists:
+                return False  # zaten var
+
+            # Yoksa kaydet
+            self.save_unplayable_track(track_data, owner)
+            return True
+        except Exception as e:
+            logger.exception("save_unplayable_track_if_new hata: %s", e)
+            return False
+
     def upsert_priority_track(self, track_id: str, owner: str, average: int):
         try:
             created_at = datetime.datetime.utcnow().isoformat()

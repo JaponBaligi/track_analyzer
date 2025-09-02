@@ -117,7 +117,21 @@ def scan_playlist_for_unplayable_tracks(
 
                     # Veritabanına kaydet
                     storage = TrackStorage()
-                    storage.save_unplayable_track(track_info, owner=owner)
+                    if storage.save_unplayable_track_if_new(track_info, owner=owner):
+                        # Albüm adı boşsa Single yaz
+                        album_name = track_info.get("album", {}).get("name", "Single")
+
+                        bad_tracks.append({
+                            "track_id": track_info.get("id"),
+                            "track_name": track_info.get("name"),
+                            "artist_name": artist_name,
+                            "playlist_id": playlist_id,
+                            "image_url": image_url,
+                            "album_name": album_name,
+                            "popularity": track_info.get("popularity", "Bilinmiyor"),
+                            "duration_ms": track_info.get("duration_ms")
+                        })
+
                     storage.close()
 
                     # Albüm adı boşsa Single yaz

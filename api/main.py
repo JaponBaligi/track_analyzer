@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router as api_router
+from api.routes import db_view
 from utils.logger import get_logger
 from db.track_storage import TrackStorage
 from dotenv import load_dotenv
@@ -31,7 +32,6 @@ app.add_middleware(
 
 # Ana API router
 app.include_router(api_router, prefix="/api")
-
 @app.get("/")
 def root():
     return {"message": "Spotify Track Analyzer API çalışıyor."}

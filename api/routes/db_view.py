@@ -18,6 +18,16 @@ def list_unplayable(
     finally:
         storage.close()
 
+@router.delete("/{track_id}")
+def delete_track_route(track_id: str):
+    storage = TrackStorage()
+    try:
+        deleted = storage.delete_track(track_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Track not found")
+        return {"status": "ok", "deleted": track_id}
+    finally:
+        storage.close()
 
 @router.get("/priority")
 def list_priority(
@@ -31,7 +41,7 @@ def list_priority(
         storage.close()
 
 
-@router.post("/evaluate/{track_id}")
+@router.post("/promote/{track_id}")
 def evaluate_and_maybe_promote(
     track_id: str,
     owner: str = Depends(get_current_user),

@@ -157,6 +157,22 @@ class TrackStorage:
         except Exception as e:
             logger.exception("upsert_priority_track hata: %s", e)
 
+    # ---------- DELETE ----------
+
+    def delete_track(self, track_id: str) -> bool:
+        try:
+            print(f"[DEBUG] Silme denemesi: track_id={track_id}")
+            self.c.execute(
+                "DELETE FROM unplayable_tracks WHERE id = ?",
+                (track_id,)
+            )
+            self.conn.commit()
+            print(f"[DEBUG] Silinen satır sayısı: {self.c.rowcount}")
+            return self.c.rowcount > 0
+        except Exception as e:
+            print(f"[ERROR] delete_track hata: {e}")
+            return False
+
     # ---------- QUERIES ----------
 
     def _row_to_dict(self, cursor, row) -> Dict[str, Any]:

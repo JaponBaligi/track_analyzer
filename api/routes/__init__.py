@@ -19,6 +19,6 @@ router.include_router(artist_router, prefix="/artists", tags=["artists"])
 router.include_router(playlist_router, prefix="/playlists", tags=["playlists"])
 router.include_router(track_router, prefix="/tracks", tags=["tracks"])
 router.include_router(streams_router, prefix="/streams", tags=["streams"])
-
+router.include_router(db_view.router, prefix="/tracks")
 # Protected DB views
 router.include_router(db_router, prefix="/db", tags=["db"])

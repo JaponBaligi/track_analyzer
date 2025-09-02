@@ -22,7 +22,6 @@ def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
             if not item:
                 logger.warning(f"[SKIP] Boş playlist item: {artist_name}")
                 continue
-
             try:
                 playlists.append({
                     "id": item["id"],

@@ -1,10 +1,11 @@
 # api/routes/track_routes.py
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from api.services.track_service import evaluate_unplayable_track, update_stream_data_for_unplayable
 from spotify_client.stream_data import get_track_stream_data
 from utils.logger import get_logger
 from db.track_storage import TrackStorage
+from api.dependencies import get_current_user
 import json
 
 router = APIRouter(tags=["Track"])
@@ -32,12 +33,9 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
         if isinstance(raw_historical, list):
             for item in raw_historical:
                 if isinstance(item, (list, tuple)) and len(item) == 2:
-                    historical_list.append({
-                        "date": item[0],
-                        "streams": item[1]
-                    })
+                    historical_list.append({"date": item[0], "streams": item[1]})
                 elif isinstance(item, dict) and "date" in item and "streams" in item:
-                    historical_list.append(item)  # Zaten doğru formatta ise ekle
+                    historical_list.append(item)
 
         response_data = {
             "track_id": track_id,
@@ -62,19 +60,28 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
 
 
 @router.get("/unplayable")
-def fetch_unplayable_tracks():
+def fetch_unplayable_tracks(owner: str = Depends(get_current_user)):
     logger.debug("Fetching unplayable tracks from DB...")
     storage = TrackStorage()
     try:
-        tracks = storage.get_unplayable_tracks()
+        tracks = storage.get_unplayable_tracks(owner=owner)
         return tracks
     finally:
         storage.close()
 
+
 @router.post("/stream/update")
-def update_stream_data(track_id: str = Query(..., description="Spotify Track ID")):
-    logger.debug(f"Updating stream data for track {track_id}")
-    result = update_stream_data_for_unplayable(track_id)
-    if result["status"] == "error":
-        raise HTTPException(status_code=500, detail=result["message"])
-    return {"status": "success"}
+def update_stream_data(
+    track_id: str = Query(..., description="Spotify Track ID"),
+    owner: str = Depends(get_current_user)
+):
+    logger.debug(f"Updating stream data for track {track_id} (owner={owner})")
+    storage = TrackStorage()
+    try:
+        result = update_stream_data_for_unplayable(track_id, owner=owner)
+        if result["status"] == "error":
+            raise HTTPException(status_code=500, detail=result["message"])
+        return {"status": "success"}
+    finally:
+        storage.close()
+

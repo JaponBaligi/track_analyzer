@@ -1,5 +1,7 @@
 # api/services/artist_service.py
 
+from fastapi import Depends
+from api.dependencies import get_current_user
 from spotify_client.artist_scanner import pseudo_recursive_scan
 from spotify_client.artist_utils import get_artist_info
 from utils.logger import get_logger
@@ -7,10 +9,10 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def start_artist_scan(artist_name: str, market: str | None = None, max_depth: int = 2) -> dict:
+def start_artist_scan(artist_name: str, market: str | None = None, max_depth: int = 2, owner: str | None = None) -> dict:
     try:
         logger.info(f"Starting pseudo-recursive scan for: {artist_name} (market={market}, max_depth={max_depth})")
-        scan_result = pseudo_recursive_scan(artist_name, max_depth=max_depth, market=market)
+        scan_result = pseudo_recursive_scan(artist_name, max_depth=max_depth, market=market, current_owner=owner)
 
         # Güvenli artist_names dönüştürme
         if "tracks" in scan_result and isinstance(scan_result["tracks"], list):

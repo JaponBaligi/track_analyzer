@@ -1,21 +1,22 @@
 # api/routes/artists.py
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from api.schemas.artist import ArtistScanRequest, ArtistInfoResponse
 from api.services.artist_service import start_artist_scan as scan_artist_playlists, fetch_artist_info as get_artist_info
+from api.dependencies import get_current_user
 from utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
 
 @router.post("/scan", status_code=202)
-async def scan_artist(request: ArtistScanRequest):
+async def scan_artist(request: ArtistScanRequest, owner: str= Depends(get_current_user)):
     """
     Belirtilen sanatçı için tarama işlemini başlatır (playliste girip kaldırılan trackleri arar).
     """
     artist_name = request.artist_name.strip()
     market = request.region
-    max_depth = request.max_depth or 2  # <-- Yeni eklendi
+    max_depth = request.max_depth or 2
 
     if not artist_name:
         logger.warning("Received empty artist name in scan request.")
@@ -23,7 +24,7 @@ async def scan_artist(request: ArtistScanRequest):
 
     try:
         logger.info(f"Artist scan started for: {artist_name} with market={market}, max_depth={max_depth}")
-        scan_result = scan_artist_playlists(artist_name, market=market, max_depth=max_depth)  # <-- Yeni parametre
+        scan_result = scan_artist_playlists(artist_name, market=market, max_depth=max_depth, owner=owner)
         logger.info(f"Artist scan completed for: {artist_name}")
 
         return {

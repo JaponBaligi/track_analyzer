@@ -2,9 +2,9 @@
 
 from spotify_client.client import get_spotify_client
 from utils.logger import get_logger
-# from api.services.track_service import update_stream_data_for_unplayable  # Kaldırıldı, otomatik stream çekme olmayacak
-from db.track_storage import TrackStorage
 from spotify_client.track import get_track_info
+from db.track_storage import TrackStorage
+
 logger = get_logger(__name__)
 sp = get_spotify_client()
 
@@ -41,7 +41,6 @@ def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
         logger.exception(f"[HATA] Playlist arama başarısız: {artist_name}")
         return []
 
-
 def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
     """
     Belirli bir kullanıcının sahip olduğu public playlistleri getirir.
@@ -65,12 +64,11 @@ def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
         logger.exception(f"[HATA] Owner playlistleri alınamadı: {owner_id}")
         return []
 
-
-logger = get_logger(__name__)
-sp = get_spotify_client()
-
-
-def scan_playlist_for_unplayable_tracks(playlist_id: str, market: str | None = None) -> list[dict]:
+def scan_playlist_for_unplayable_tracks(
+    playlist_id: str,
+    market: str | None = None,
+    owner: str | None = None
+) -> list[dict]:
     logger.debug(f"Playlist taranıyor: {playlist_id} (market={market})")
     bad_tracks = []
 
@@ -118,9 +116,9 @@ def scan_playlist_for_unplayable_tracks(playlist_id: str, market: str | None = N
                     track_info["image_url"] = image_url
                     track_info["artist_name"] = artist_name
 
-                    # DB'ye kaydet
+                    # Veritabanına kaydet
                     storage = TrackStorage()
-                    storage.save_unplayable_track(track_info)
+                    storage.save_unplayable_track(track_info, owner=owner)
                     storage.close()
 
                     # Albüm adı boşsa Single yaz
@@ -143,9 +141,3 @@ def scan_playlist_for_unplayable_tracks(playlist_id: str, market: str | None = N
     except Exception as e:
         logger.exception(f"[HATA] Playlist tarama hatası: {playlist_id}")
         return []
-
-    
-                # Buradaki stream verisi çekme kaldırıldı, otomatik olarak yapılmayacak
-                # result = update_stream_data_for_unplayable(track_id)
-                # if result.get("status") != "success":
-                #     logger.warning(f"[STREAM] Kaydedilemedi: {track_id}")

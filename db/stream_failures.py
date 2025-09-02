@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from config.config import DATABASE_URL  # .env'den geliyor
 BASE_DIR = Path(__file__).resolve().parent.parent  # db klasöründen iki seviye yukarı -> proje kökü
-DB_PATH = BASE_DIR / "spotify_monitoring.db"
+DB_PATH = BASE_DIR / "database.db"
 if not DB_PATH.is_absolute():
     DB_PATH = (BASE_DIR / DB_PATH).resolve()
 

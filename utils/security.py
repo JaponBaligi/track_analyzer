@@ -1,4 +1,5 @@
 # utils/security.py
+
 import os
 import hmac
 import time
@@ -45,5 +46,3 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
-
-print(f"USER1: {len(USER1_PASSWORD)}, USER2: {len(USER2_PASSWORD)}")

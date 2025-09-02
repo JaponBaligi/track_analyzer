@@ -27,7 +27,7 @@ class TrackStorage:
         return self.c.fetchone() is not None
 
     def _init_db(self):
-        # unplayable_tracks (owner eklendi)
+        # unplayable_tracks
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS unplayable_tracks (
                 id TEXT PRIMARY KEY,
@@ -45,16 +45,18 @@ class TrackStorage:
             )
         """)
 
-        # track_streams: historical_streams JSON ve last_updated
+        # track_streams: artık owner ile primary key olacak
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS track_streams (
-                track_id TEXT PRIMARY KEY,
+                track_id TEXT,
+                owner TEXT,
                 historical_streams TEXT,
-                last_updated TEXT
+                last_updated TEXT,
+                PRIMARY KEY (track_id, owner)
             )
         """)
 
-        # priority_tracks: ortalama >= threshold olanlar
+        # priority_tracks
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS priority_tracks (
                 track_id TEXT,
@@ -120,30 +122,24 @@ class TrackStorage:
         except Exception as e:
             logger.exception("save_unplayable_track hata: %s", e)
 
-    def save_track_stream_data(self, track_id: str, historical_data: dict):
+    def save_track_stream_data(self, track_id: str, historical_data: dict, owner: str):
         """
-        historical_data beklenen format:
-        {
-            "streams": [
-                {"date": "YYYY-MM-DD", "streams": 123},
-                ...
-            ]
-        }
+        Owner bazlı stream verisi kaydeder.
         """
         try:
             hist_json = json.dumps(historical_data, ensure_ascii=False)
             last_updated = datetime.datetime.utcnow().isoformat()
 
             self.c.execute("""
-                INSERT INTO track_streams (track_id, historical_streams, last_updated)
-                VALUES (?, ?, ?)
-                ON CONFLICT(track_id) DO UPDATE SET
+                INSERT INTO track_streams (track_id, owner, historical_streams, last_updated)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(track_id, owner) DO UPDATE SET
                     historical_streams=excluded.historical_streams,
                     last_updated=excluded.last_updated
-            """, (track_id, hist_json, last_updated))
+            """, (track_id, owner, hist_json, last_updated))
 
             self.conn.commit()
-            logger.info("Historical stream data saved for track %s", track_id)
+            logger.info("Historical stream data saved for track %s (owner=%s)", track_id, owner)
         except Exception as e:
             logger.exception("save_track_stream_data hata: %s", e)
 
@@ -164,10 +160,7 @@ class TrackStorage:
     # ---------- QUERIES ----------
 
     def _row_to_dict(self, cursor, row) -> Dict[str, Any]:
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
+        return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
     def get_unplayable_tracks(self, owner: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
         """
@@ -228,26 +221,22 @@ class TrackStorage:
             logger.exception("get_priority_tracks hata: %s", e)
             return []
 
-    def get_track_historical(self, track_id: str) -> Optional[List[Dict[str, Any]]]:
+    def get_track_historical(self, track_id: str, owner: str) -> Optional[List[Dict[str, Any]]]:
         """
-        track_streams.historical_streams içindeki 'streams' listesini döndürür.
+        Owner bazlı historical_streams döner.
         """
         try:
             self.c.execute("""
-                SELECT historical_streams FROM track_streams WHERE track_id = ?
-            """, (track_id,))
+                SELECT historical_streams FROM track_streams WHERE track_id = ? AND owner = ?
+            """, (track_id, owner))
             row = self.c.fetchone()
             if not row or not row[0]:
                 return None
             payload = json.loads(row[0])
             streams = payload.get("streams")
             if isinstance(streams, list):
-                # Normalize: her elemanda {"date": "...", "streams": int}
-                norm = []
-                for item in streams:
-                    if isinstance(item, dict) and "date" in item and "streams" in item:
-                        norm.append({"date": item["date"], "streams": int(item["streams"])})
-                return norm
+                return [{"date": item["date"], "streams": int(item["streams"])}
+                        for item in streams if "date" in item and "streams" in item]
             return None
         except Exception as e:
             logger.exception("get_track_historical hata: %s", e)
@@ -257,13 +246,10 @@ class TrackStorage:
         if self.conn:
             self.conn.close()
 
-# ---- Modül-dışı uyumluluk fonksiyonu (spotify_client.stream_data import ediyor) ----
-def save_track_stream_data(track_id: str, historical_data: dict, current_data: dict):
-    """
-    Eski imza ile uyumluluk için mevcut; current_data şu an kullanılmıyor.
-    """
+# ---- Modül-dışı uyumluluk ----
+def save_track_stream_data(track_id: str, historical_data: dict, current_data: dict, owner: str):
     storage = TrackStorage()
     try:
-        storage.save_track_stream_data(track_id, historical_data)
+        storage.save_track_stream_data(track_id, historical_data, owner)
     finally:
         storage.close()

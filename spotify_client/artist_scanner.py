@@ -10,9 +10,9 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-
 def pseudo_recursive_scan(
     artist_name: str,
+    current_owner: str,  
     max_depth=2,
     playlist_limit=10,
     market: str | None = None
@@ -51,7 +51,7 @@ def pseudo_recursive_scan(
                 logger.debug(f"Playlist taranıyor: {pid} (Owner: {owner})")
 
                 try:
-                    unplayables = scan_playlist_for_unplayable_tracks(pid, market=market)
+                    unplayables = scan_playlist_for_unplayable_tracks(pid, market=market, owner=current_owner)
                     if unplayables:
                         for t in unplayables:
                             logger.warning(f"[!] Unplayable track bulundu: {t['track_name']} (ID: {t['track_id']})")

@@ -7,7 +7,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-DB_FILE = "spotify_monitoring.db"
+DB_FILE = "database.db"
 
 class PlaylistStorage:
     def __init__(self, db_file=DB_FILE):

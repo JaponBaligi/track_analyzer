@@ -11,7 +11,7 @@ interface Track {
   album_image: string; 
   duration_ms: number;
   popularity: number;
-  track_url: string; 
+  track_uri: string;   // artık URI
   playlist_url: string | null; 
 }
 
@@ -31,7 +31,7 @@ export default function Database() {
           album_image: t.image_url,
           duration_ms: t.duration_ms,
           popularity: t.popularity,
-          track_url: t.spotify_url,
+          track_uri: t.spotify_uri || t.spotify_url.replace("https://open.spotify.com/track/", "spotify:track:"),
           playlist_url: t.playlist_id
             ? `https://open.spotify.com/playlist/${t.playlist_id}`
             : null,
@@ -75,7 +75,7 @@ export default function Database() {
               <th className="p-2 border">Albüm</th>
               <th className="p-2 border">Süre</th>
               <th className="p-2 border">Popülarite</th>
-              <th className="p-2 border">Track Link</th>
+              <th className="p-2 border">Track URI</th>
               <th className="p-2 border">Playlist Link</th>
               <th className="p-2 border">İşlem</th>
             </tr>
@@ -97,12 +97,12 @@ export default function Database() {
                 <td className="p-2 border">{t.popularity}</td>
                 <td className="p-2 border">
                   <a
-                    href={t.track_url}
+                    href={`https://open.spotify.com/track/${t.track_uri.split(":")[2]}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-500 underline"
                   >
-                    Link
+                    {t.track_uri}
                   </a>
                 </td>
                 <td className="p-2 border">
@@ -120,18 +120,18 @@ export default function Database() {
                   )}
                 </td>
                 <td className="p-2 border">
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                >
-                  Sil
-                </button>
-              </td>
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                  >
+                    Sil
+                  </button>
+                </td>
               </tr>
             ))}
             {tracks.length === 0 && !error && (
               <tr>
-                <td colSpan={8} className="p-4 text-center text-gray-500">
+                <td colSpan={9} className="p-4 text-center text-gray-500">
                   No data
                 </td>
               </tr>

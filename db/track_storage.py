@@ -128,7 +128,7 @@ class TrackStorage:
         """
         try:
             hist_json = json.dumps(historical_data, ensure_ascii=False)
-            last_updated = datetime.datetime.utcnow().isoformat()
+            last_updated = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
             self.c.execute("""
                 INSERT INTO track_streams (track_id, owner, historical_streams, last_updated)
@@ -172,7 +172,7 @@ class TrackStorage:
 
     def upsert_priority_track(self, track_id: str, owner: str, average: int):
         try:
-            created_at = datetime.datetime.utcnow().isoformat()
+            created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.c.execute("""
                 INSERT INTO priority_tracks (track_id, owner, average, created_at)
                 VALUES (?, ?, ?, ?)

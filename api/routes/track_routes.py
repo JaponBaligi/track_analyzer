@@ -70,18 +70,39 @@ def fetch_unplayable_tracks(owner: str = Depends(get_current_user)):
         storage.close()
 
 
+@router.get("/streams/{track_id}")
+def get_streams(track_id: str, owner: str = Depends(get_current_user)):
+    storage = TrackStorage()
+    try:
+        historical = storage.get_track_historical(track_id, owner)
+        if historical:  # DB’de veri varsa direkt dön
+            return {"error": False, "historicalData": historical}
+        else:  # DB’de veri yoksa frontend’e mesaj gönder
+            return {"error": True, "message": "No historical data in DB"}
+    finally:
+        storage.close()
+
+
 @router.post("/stream/update")
 def update_stream_data(
     track_id: str = Query(..., description="Spotify Track ID"),
     owner: str = Depends(get_current_user)
 ):
     logger.debug(f"Updating stream data for track {track_id} (owner={owner})")
+    
+    # Önce DB’de veri var mı kontrol et
     storage = TrackStorage()
     try:
-        result = update_stream_data_for_unplayable(track_id, owner=owner)
-        if result["status"] == "error":
-            raise HTTPException(status_code=500, detail=result["message"])
-        return {"status": "success"}
+        existing = storage.get_track_historical(track_id, owner)
+        if existing:
+            logger.info(f"Track {track_id} already has historical data in DB (owner={owner})")
+            return {"status": "success", "message": "Data already exists in DB", "historicalData": existing}
     finally:
         storage.close()
+
+    # Yoksa RapidAPI’den çek ve kaydet
+    result = update_stream_data_for_unplayable(track_id, owner)
+    if result["status"] == "error":
+        raise HTTPException(status_code=500, detail=result["message"])
+    return result
 

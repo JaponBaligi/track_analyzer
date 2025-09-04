@@ -264,9 +264,9 @@ class TrackStorage:
             logger.exception("get_priority_tracks hata: %s", e)
             return []
 
-    def get_track_historical(self, track_id: str, owner: str) -> Optional[List[Dict[str, Any]]]:
+    def get_track_historical(self, track_id: str, owner: str) -> list[dict]:
         """
-        Owner bazlı historical_streams döner.
+        Owner bazlı historical_streams döner. Boş liste dönerse frontend hata vermez.
         """
         try:
             self.c.execute("""
@@ -274,16 +274,19 @@ class TrackStorage:
             """, (track_id, owner))
             row = self.c.fetchone()
             if not row or not row[0]:
-                return None
+                return []
             payload = json.loads(row[0])
-            streams = payload.get("streams")
-            if isinstance(streams, list):
-                return [{"date": item["date"], "streams": int(item["streams"])}
-                        for item in streams if "date" in item and "streams" in item]
-            return None
+            streams = payload.get("streams", [])
+            normalized = []
+            for item in streams:
+                if isinstance(item, dict) and "date" in item and "streams" in item:
+                    normalized.append({"date": str(item["date"]), "streams": int(item["streams"])})
+                elif isinstance(item, (list, tuple)) and len(item) == 2:
+                    normalized.append({"date": str(item[0]), "streams": int(item[1])})
+            return normalized
         except Exception as e:
             logger.exception("get_track_historical hata: %s", e)
-            return None
+            return []
 
     def close(self):
         if self.conn:

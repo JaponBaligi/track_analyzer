@@ -13,12 +13,18 @@ router = APIRouter()
 # Public auth endpoints
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 
-# App endpoints (şu an public; frontend'de header ile erişiliyor)
-# İstersen bunları dependencies ile koruyabilirsin; şimdilik DB uçlarını guard ediyoruz.
+# App endpoints
 router.include_router(artist_router, prefix="/artists", tags=["artists"])
 router.include_router(playlist_router, prefix="/playlists", tags=["playlists"])
-router.include_router(track_router, prefix="/tracks", tags=["tracks"])
-router.include_router(streams_router, prefix="/streams", tags=["streams"])
+
+# Track routes
+# -> /api/tracks/evaluate, /api/tracks/unplayable, /api/stream/update
+router.include_router(track_router, prefix="", tags=["tracks"])
 router.include_router(db_view.router, prefix="/tracks")
-# Protected DB views
+
+# Stream routes
+# -> /api/streams/{track_id} (frontend ile birebir eşleşiyor)
+router.include_router(streams_router, prefix="", tags=["streams"])
+
+# DB views (protected)
 router.include_router(db_router, prefix="/db", tags=["db"])

@@ -1,62 +1,60 @@
-//api/spotify.ts
+// src/api/spotify.ts
+// Spotify + DB + Stream API yardımcı fonksiyonları
 
 import axios from "./axiosInstance";
 import { Artist, Playlist, Track } from "../types";
 
+// === Artist ===
 export const searchArtist = async (artistName: string): Promise<Artist[]> => {
-  try {
-    const response = await axios.get("/artists/search", {
-      params: { name: artistName }
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Artist search error:", error);
-    throw error;
-  }
+  const { data } = await axios.get("/artists/search", { params: { name: artistName } });
+  return data;
 };
 
-export const scanArtist = async (artistName: string, region: string, depth: number) => {
-  try {
-    const response = await axios.post("/artists/scan", {
-      artist_name: artistName,
-      region: region,
-      max_depth: depth
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Artist scan error:", error);
-    throw error;
-  }
+// Artist taraması (RapidAPI ve playlist taraması yapıyor, backend’de /artists/scan mevcut)
+export const scanArtist = async (artistId: string, region?: string, depth?: number) => {
+  const params: Record<string, any> = { artist_id: artistId };
+  if (region) params.region = region;
+  if (depth) params.depth = depth;
+
+  const { data } = await axios.get("/artists/scan", { params });
+  return data;
 };
 
-export const getPlaylists = async (): Promise<Playlist[]> => {
-  try {
-    const response = await axios.get("/playlists");
-    return response.data;
-  } catch (error) {
-    console.error("Playlist fetch error:", error);
-    throw error;
-  }
+// === Playlist ===
+export const getPlaylistsByArtist = async (artistId: string): Promise<Playlist[]> => {
+  const { data } = await axios.get("/playlists/by-artist", { params: { artist_id: artistId } });
+  return data;
 };
 
-export const getUnplayableTracks = async (): Promise<Track[]> => {
-  try {
-    const response = await axios.get("/tracks/unplayable");
-    return response.data;
-  } catch (error) {
-    console.error("Unplayable track fetch error:", error);
-    throw error;
-  }
+export const getTracksByPlaylist = async (playlistId: string): Promise<Track[]> => {
+  const { data } = await axios.get("/playlists/tracks", { params: { playlist_id: playlistId } });
+  return data;
 };
 
+// === Track ===
 export const evaluateTrack = async (trackId: string) => {
-  try {
-    const response = await axios.get("/tracks/evaluate", {
-      params: { track_id: trackId }
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Track evaluation error:", error);
-    throw error;
-  }
+  const { data } = await axios.get("/tracks/evaluate", { params: { track_id: trackId } });
+  return data;
+};
+
+// DB’de kayıtlı ama “unplayable” olan trackleri getirir
+export const getUnplayableTracks = async (): Promise<Track[]> => {
+  const { data } = await axios.get("/db/unplayable");
+  return Array.isArray(data) ? data : data?.items ?? [];
+};
+
+// === Stream yardımcıları ===
+
+// DB’den varsa getirir, yoksa boş döner
+export const getStreamSeries = async (trackId: string) => {
+  const { data } = await axios.get(`/streams/${trackId}`);
+  return data;
+};
+
+// RapidAPI’den çekip veritabanına kaydeden servis (backend → POST /stream/update)
+export const updateAndSaveStreamSeries = async (trackId: string) => {
+  const { data } = await axios.post("/stream/update", null, {
+    params: { track_id: trackId },
+  });
+  return data;
 };

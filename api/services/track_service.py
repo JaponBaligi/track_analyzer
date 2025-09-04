@@ -33,9 +33,9 @@ def evaluate_unplayable_track(track_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def update_stream_data_for_unplayable(track_id: str):
+def update_stream_data_for_unplayable(track_id: str, owner: str):
     """
-    Sadece historical stream verisini çekip DB'ye kaydeder.
+    RapidAPI'den stream verisi çekip normalize edip DB'ye kaydeder.
     """
     historical_data = get_historical_stream_count(track_id)
 
@@ -44,22 +44,31 @@ def update_stream_data_for_unplayable(track_id: str):
         return {"status": "error", "message": "Historical stream data fetch failed"}
 
     try:
-        storage = TrackStorage()
-        # Dict ise "streams" alanını al, list ise direkt kaydet
+        # Normalize
         if isinstance(historical_data, dict) and "streams" in historical_data:
-            storage.save_track_stream_data(track_id, historical_data)
+            raw_streams = historical_data["streams"]
         elif isinstance(historical_data, list):
-            storage.save_track_stream_data(track_id, {"streams": historical_data})
+            raw_streams = historical_data
         else:
             logger.warning(f"Unexpected historical data format for {track_id}: {type(historical_data)}")
             return {"status": "error", "message": "Unexpected data format"}
+
+        normalized_streams = []
+        for item in raw_streams:
+            if isinstance(item, dict) and "date" in item and "streams" in item:
+                normalized_streams.append({"date": str(item["date"]), "streams": int(item["streams"])})
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
+                normalized_streams.append({"date": str(item[0]), "streams": int(item[1])})
+
+        storage = TrackStorage()
+        storage.save_track_stream_data(track_id, {"streams": normalized_streams}, owner)
         storage.close()
-        logger.info(f"Historical stream data saved for track {track_id}")
-        return {"status": "success"}
+
+        logger.info(f"Historical stream data saved for track {track_id} (owner={owner})")
+        return {"status": "success", "historicalData": normalized_streams}
     except Exception as e:
         logger.error(f"Error saving historical stream data for track {track_id}: {e}")
         return {"status": "error", "message": str(e)}
-
 
 def save_unplayable_track(track_data: dict):
     """

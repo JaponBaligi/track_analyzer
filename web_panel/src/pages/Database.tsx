@@ -18,6 +18,7 @@ interface DbTrack {
   name: string;
   artist?: string;
   artists?: string[];
+  artist_names?: string[];
   album?: string;
   album_name?: string;
   image_url?: string | null;
@@ -49,6 +50,14 @@ function getTrackImage(t: DbTrack): string | undefined {
 function getTrackAlbum(t: DbTrack): string | undefined {
   return t.album || t.album_name || undefined;
 }
+
+function getTrackArtist(t: DbTrack): string {
+  if (t.artist) return t.artist;
+  if (Array.isArray(t.artists) && t.artists.length) return t.artists.join(", ");
+  if (Array.isArray(t.artist_names) && t.artist_names.length) return t.artist_names.join(", ");
+  return "Bilinmiyor";
+}
+
 
 function toDaily(series: StreamPoint[]): number[] {
   const out: number[] = [];
@@ -216,7 +225,7 @@ export default function Database() {
                     <div className="min-w-0">
                       <div className="truncate font-medium">{t.name}</div>
                       <div className="truncate text-xs text-gray-500">
-                        {(t.artist || t.artists?.join(", ") || "Bilinmiyor") + (getTrackAlbum(t) ? ` • ${getTrackAlbum(t)}` : "")}
+                        {(getTrackArtist(t)  + (getTrackAlbum(t) ? ` • ${getTrackAlbum(t)}` : ""))}
                       </div>
                     </div>
                   </div>
@@ -243,7 +252,7 @@ export default function Database() {
                       disabled={streams[selectedTrackId]?.loading}
                       className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
                     >
-                      {streams[selectedTrackId]?.loading ? "Yükleniyor…" : "Stream Verisi Getir ve Kaydet"}
+                      {streams[selectedTrackId]?.loading ? "Yükleniyor…" : "Stream Verisi Getir"}
                     </button>
                   )}
                 </div>
@@ -299,7 +308,7 @@ export default function Database() {
                     <div className="space-y-1">
                       <div className="font-semibold text-lg">{selectedTrack.name}</div>
                       <div className="text-sm text-gray-600">
-                        {selectedTrack.artist || "Bilinmiyor"} • {getTrackAlbum(selectedTrack) || "Single"}
+                        {selectedTrack.artist_names || "Bilinmiyor"} • {getTrackAlbum(selectedTrack) || "Single"}
                       </div>
                     </div>
                   </div>

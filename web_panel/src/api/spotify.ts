@@ -11,14 +11,15 @@ export const searchArtist = async (artistName: string): Promise<Artist[]> => {
 };
 
 // Artist taraması (RapidAPI ve playlist taraması yapıyor, backend’de /artists/scan mevcut)
-export const scanArtist = async (artistId: string, region?: string, depth?: number) => {
-  const params: Record<string, any> = { artist_id: artistId };
-  if (region) params.region = region;
-  if (depth) params.depth = depth;
+export const scanArtist = async (artistName: string, region?: string, depth?: number) => {
+  const body: Record<string, any> = { artist_name: artistName };
+  if (region) body.region = region;
+  if (depth) body.max_depth = depth;
 
-  const { data } = await axios.get("/artists/scan", { params });
+  const { data } = await axios.post("/artists/scan", body);
   return data;
 };
+
 
 // === Playlist ===
 export const getPlaylistsByArtist = async (artistId: string): Promise<Playlist[]> => {

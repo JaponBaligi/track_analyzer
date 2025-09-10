@@ -90,7 +90,7 @@ export default function Database() {
       try {
         setLoading(true);
         setError(undefined);
-        const { data } = await axios.get("/db/unplayable", { params: { limit: 500 } });
+        const { data } = await axios.get("/db/unplayable", { params: { limit: 1000 } });
         if (!mounted) return;
         const items: DbTrack[] = Array.isArray(data) ? data : data?.items ?? [];
         setTracks(items);

@@ -4,9 +4,11 @@ from spotify_client.client import get_spotify_client
 from utils.logger import get_logger
 from spotify_client.track import get_track_info
 from db.track_storage import TrackStorage
+from db.flagged_artists import get_flagged_names_set
 
 logger = get_logger(__name__)
 sp = get_spotify_client()
+
 
 def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
     """
@@ -40,6 +42,7 @@ def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
         logger.exception(f"[HATA] Playlist arama başarısız: {artist_name}")
         return []
 
+
 def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
     """
     Belirli bir kullanıcının sahip olduğu public playlistleri getirir.
@@ -63,90 +66,101 @@ def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
         logger.exception(f"[HATA] Owner playlistleri alınamadı: {owner_id}")
         return []
 
+
 def scan_playlist_for_unplayable_tracks(
     playlist_id: str,
     market: str | None = None,
     owner: str | None = None
 ) -> list[dict]:
+    """
+    Playlist içindeki tüm unplayable trackleri tarar (pagination ile).
+    Flagged artist'lerin parçaları DB'ye kaydedilmez ve kullanıcıya gösterilmez.
+    """
     logger.debug(f"Playlist taranıyor: {playlist_id} (market={market})")
     bad_tracks = []
 
     try:
-        kwargs = {
-            "playlist_id": playlist_id,
-            "fields": (
-                "items.track.id,"
-                "items.track.name,"
-                "items.track.is_playable,"
-                "items.track.album.images,"
-                "items.track.artists.name"
-            ),
-            "additional_types": ["track"]
-        }
-        if market is not None:
-            kwargs["market"] = market
+        limit = 100
+        offset = 0
+        flagged = get_flagged_names_set()
 
-        results = sp.playlist_tracks(**kwargs)
+        while True:
+            kwargs = {
+                "playlist_id": playlist_id,
+                "fields": (
+                    "items.track.id,"
+                    "items.track.name,"
+                    "items.track.is_playable,"
+                    "items.track.album.images,"
+                    "items.track.artists.name,"
+                    "total"
+                ),
+                "additional_types": ["track"],
+                "limit": limit,
+                "offset": offset
+            }
+            if market is not None:
+                kwargs["market"] = market
 
-        for item in results.get("items", []):
-            track = item.get("track")
-            if not track:
-                logger.warning(f"[SKIP] Track bilgisi eksik: {playlist_id}")
-                continue
+            results = sp.playlist_tracks(**kwargs)
+            items = results.get("items", [])
+            total = results.get("total", 0)
 
-            if track.get("is_playable") is False:
-                track_id = track.get("id")
-                track_name = track.get("name")
-                album_images = track.get("album", {}).get("images", [])
-                image_url = album_images[0]["url"] if album_images else None
+            if not items:
+                break
 
-                # Artist ismini al
-                artists = track.get("artists", [])
-                artist_name = artists[0]["name"] if artists else None
-
-                if not track_id or not track_name:
-                    logger.warning(f"[SKIP] Track ID veya isim eksik: playlist={playlist_id}")
+            for item in items:
+                track = item.get("track")
+                if not track:
+                    logger.warning(f"[SKIP] Track bilgisi eksik: {playlist_id}")
                     continue
 
-                # Spotify'dan tam track bilgilerini çek
-                track_info = get_track_info(track_id)
-                if track_info:
-                    track_info["playlist_id"] = playlist_id
-                    track_info["image_url"] = image_url
-                    track_info["artist_name"] = artist_name
+                if track.get("is_playable") is False:
+                    track_id = track.get("id")
+                    track_name = track.get("name")
+                    album_images = track.get("album", {}).get("images", [])
+                    image_url = album_images[0]["url"] if album_images else None
 
-                    # Veritabanına kaydet
-                    storage = TrackStorage()
-                    if storage.save_unplayable_track_if_new(track_info, owner=owner):
-                        # Albüm adı boşsa Single yaz
-                        album_name = track_info.get("album", {}).get("name", "Single")
+                    # Artist ismini al
+                    artists = track.get("artists", [])
+                    artist_name = artists[0]["name"] if artists else None
 
-                        bad_tracks.append({
-                            "track_id": track_info.get("id"),
-                            "track_name": track_info.get("name"),
-                            "artist_name": artist_name,
-                            "playlist_id": playlist_id,
-                            "image_url": image_url,
-                            "album_name": album_name,
-                            "popularity": track_info.get("popularity", "Bilinmiyor"),
-                            "duration_ms": track_info.get("duration_ms")
-                        })
+                    # Flagged kontrolü
+                    if artist_name in flagged:
+                        logger.info(f"[SKIP] Flagged artist bulundu: {artist_name} (playlist={playlist_id})")
+                        continue
 
-                    storage.close()
+                    if not track_id or not track_name:
+                        logger.warning(f"[SKIP] Track ID veya isim eksik: playlist={playlist_id}")
+                        continue
 
-                    # Albüm adı boşsa Single yaz
-                    album_name = track_info.get("album", {}).get("name", "Single")
+                    # Spotify'dan tam track bilgilerini çek
+                    track_info = get_track_info(track_id)
+                    if track_info:
+                        track_info["playlist_id"] = playlist_id
+                        track_info["image_url"] = image_url
+                        track_info["artist_name"] = artist_name
 
-                    bad_tracks.append({
-                        "track_id": track_info.get("id"),
-                        "track_name": track_info.get("name"),
-                        "artist_name": artist_name,
-                        "playlist_id": playlist_id,
-                        "image_url": image_url,
-                        "album_name": album_name,
-                        "popularity": track_info.get("popularity", "Bilinmiyor"),
-                        "duration_ms": track_info.get("duration_ms")
-                    })
+                        # Veritabanına kaydet
+                        storage = TrackStorage()
+                        if storage.save_unplayable_track_if_new(track_info, owner=owner):
+                            album_name = track_info.get("album", {}).get("name", "Single")
+
+                            bad_tracks.append({
+                                "track_id": track_info.get("id"),
+                                "track_name": track_info.get("name"),
+                                "artist_name": artist_name,
+                                "playlist_id": playlist_id,
+                                "image_url": image_url,
+                                "album_name": album_name,
+                                "popularity": track_info.get("popularity", "Bilinmiyor"),
+                                "duration_ms": track_info.get("duration_ms")
+                            })
+                        storage.close()
+
+            offset += limit
+            if offset >= total:
+                break
 
         logger.info(f"{len(bad_tracks)} unplayable track bulundu: {playlist_id}")
         return bad_tracks

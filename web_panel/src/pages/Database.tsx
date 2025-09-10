@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatNumber } from "../utils/format";
+import { SeparatorHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface DbTrack {
   id?: string;
@@ -107,7 +109,7 @@ export default function Database() {
 
   // Stream verisini getir (DB veya RapidAPI)
   const fetchStreams = async (trackId: string, forceUpdateAndSave = false) => {
-    if (!forceUpdateAndSave && streams[trackId]?.data) return; // DB’de varsa fetch yapma
+    if (!forceUpdateAndSave && streams[trackId]?.data) return;
 
     setStreams((s) => ({
       ...s,
@@ -189,7 +191,13 @@ export default function Database() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Database</h1>
+      <h1 className="text-2x1 font-semibold">Track Database</h1>
+
+      <SeparatorHorizontal>|</SeparatorHorizontal>
+
+        <Link to="/database/flagged-artists">
+          <button aria-label="Open Flagged Artists">Flagged Artists</button>
+        </Link>
 
       <div className="flex items-end gap-4">
         <div>

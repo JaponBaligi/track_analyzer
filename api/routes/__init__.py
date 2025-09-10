@@ -7,7 +7,7 @@ from .track_routes import router as track_router
 from .streams import router as streams_router
 from .auth import router as auth_router
 from .db_view import router as db_router
-
+from .flagged_artists import router as flagged_router
 router = APIRouter()
 
 # Public auth endpoints
@@ -25,6 +25,9 @@ router.include_router(db_view.router, prefix="/tracks")
 # Stream routes
 # -> /api/streams/{track_id} (frontend ile birebir eşleşiyor)
 router.include_router(streams_router, prefix="", tags=["streams"])
+
+# Flagged Artist routes
+router.include_router(flagged_artists,prefix="flagged_artists", tags=["Flagged Artists"])
 
 # DB views (protected)
 router.include_router(db_router, prefix="/db", tags=["db"])

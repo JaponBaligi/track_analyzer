@@ -5,6 +5,7 @@ from utils.logger import get_logger
 from spotify_client.track import get_track_info
 from db.track_storage import TrackStorage
 
+
 logger = get_logger(__name__)
 sp = get_spotify_client()
 

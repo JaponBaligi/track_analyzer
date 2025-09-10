@@ -7,6 +7,7 @@ from spotify_client.playlist_scanner import (
 )
 from spotify_client.artist_utils import get_artist_id
 from utils.logger import get_logger
+from db.track_filter import should_skip_track
 
 logger = get_logger(__name__)
 

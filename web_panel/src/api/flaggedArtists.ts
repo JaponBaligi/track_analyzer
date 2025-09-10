@@ -1,29 +1,28 @@
-// api/flaggedArtists.ts
-const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8000";
+// web_panel/src/api/flaggedArtists.ts
 
+import axiosInstance from "./axiosInstance";
+
+// Flagged artist listesini getir
 export async function fetchFlaggedArtists() {
-  const res = await fetch(`${API_BASE}/api/flagged-artists`);
-  if (!res.ok) throw new Error("Failed to fetch flagged artists");
-  return res.json();
+  const res = await axiosInstance.get("/flagged-artists");
+  return res.data;
 }
 
+// Yeni flagged artist ekle
 export async function addFlaggedArtist(name: string) {
-  const res = await fetch(`${API_BASE}/api/flagged-artists`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to add");
+  try {
+    const res = await axiosInstance.post("/flagged-artists", { name });
+    return res.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data);
+    }
+    throw new Error("Failed to add");
   }
-  return res.json();
 }
 
+// Flagged artist sil
 export async function deleteFlaggedArtist(id: number) {
-  const res = await fetch(`${API_BASE}/api/flagged-artists/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete");
+  await axiosInstance.delete(`/flagged-artists/${id}`);
   return true;
 }

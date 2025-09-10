@@ -1,4 +1,5 @@
-// FlaggedArtists.tsx
+// web_panel/src/pages/FlaggedArtists.tsx
+// //[FlaggedArtistsPage] : UI to add/delete flagged artist names (exact-match, case-sensitive)
 import React, { useState, useEffect } from "react";
 import { fetchFlaggedArtists, addFlaggedArtist, deleteFlaggedArtist } from "../api/flaggedArtists";
 
@@ -6,85 +7,111 @@ export default function FlaggedArtistsPage() {
   const [name, setName] = useState("");
   const [list, setList] = useState<Array<{ id: number; name: string }>>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // //[load_list] : load flagged artists on mount
   useEffect(() => {
     (async () => {
       try {
         const data = await fetchFlaggedArtists();
-        setList(data);
-      } catch (e) {
+        setList(Array.isArray(data) ? data : []);
+      } catch (e: any) {
         console.error(e);
+        setError("Flagged Artistler yüklenemedi");
       }
     })();
   }, []);
 
-  async function handleAdd() {
+  // //[handle_add] : add a flagged artist (exact name)
+  async function handleAdd(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     setMessage(null);
+    setError(null);
     const trimmed = name.trim();
     if (!trimmed) {
-      setMessage("Please enter an exact artist name.");
+      setError("Tam artist adını girin (Artist adı 'xxxxx' ise 'Xxxxx' yazmayın).");
       return;
     }
     setLoading(true);
     try {
-      const created = await addFlaggedArtist(trimmed);
-      // Add to local list
-      setList((s) => [...s, created]);
-      // Use the exact user-requested success message
-      setMessage(
-        "Artist added to the database, for further search results will not display this artist's unplayable tracks and their tracks will not saved to the database."
-      );
+      const added = await addFlaggedArtist(trimmed);
+      // API returns created object; reload list
+      const items = await fetchFlaggedArtists();
+      setList(Array.isArray(items) ? items : []);
       setName("");
-    } catch (e) {
-      setMessage("Failed to add artist (maybe it already exists).");
+      setMessage("Artist veritabanına eklendi, sonraki arama sonuçlarında bu artistin parçaları atlanacak.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Artist eklenemedi");
     } finally {
       setLoading(false);
     }
   }
 
+  // //[handle_delete] : delete flagged by id
   async function handleDelete(id: number) {
+    setError(null);
     try {
       await deleteFlaggedArtist(id);
-      setList((s) => s.filter((x) => x.id !== id));
-    } catch (e) {
-      setMessage("Failed to delete");
+      setList((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      console.error(err);
+      setError("Artist silinemedi");
     }
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Flagged Artists</h2>
-      <p style={{ fontSize: 13, color: "#666" }}>
-        Enter the exact artist name (case & unicode sensitive). Example: <code>Floki</code>
-      </p>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Exact artist name"
-          style={{ flex: 1 }}
-        />
-        <button onClick={handleAdd} disabled={loading}>
-          Add
-        </button>
+    <div className="max-w-4xl mx-auto p-4">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Flagged Artists</h1>
       </div>
 
-      {message && <div style={{ marginTop: 12, padding: 8, border: "1px solid #ddd" }}>{message}</div>}
+      <form onSubmit={(e) => handleAdd(e)} className="mb-4">
+        <label className="block mb-2 font-medium">Tam Artist Adını Girin (büyük-küçük harf duyarlı)</label>
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="flex-1 px-3 py-2 border rounded"
+            placeholder='"xxxxx" ise "xxxxx" yazın, "Xxxxx" değil'
+            aria-label="Artist name"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60"
+          >
+            Ekle
+          </button>
+        </div>
+      </form>
 
-      <div style={{ marginTop: 24 }}>
-        <h3>Current flagged artists</h3>
-        <ul>
-          {list.map((it) => (
-            <li key={it.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{it.name}</span>
-              <button onClick={() => handleDelete(it.id)} aria-label={`Delete ${it.name}`}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+      {message && <div className="mb-4 text-green-700">{message}</div>}
+      {error && <div className="mb-4 text-red-700">{error}</div>}
+
+      <div className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-medium mb-2">Eklenen Flagged Artistler</h2>
+        {list.length === 0 ? (
+          <div className="text-sm text-gray-600">Henüz flag'lenmiş artist yok.</div>
+        ) : (
+          <ul className="space-y-2">
+            {list.map((it) => (
+              <li key={it.id} className="flex items-center justify-between">
+                <div>{it.name}</div>
+                <div>
+                  <button
+                    onClick={() => handleDelete(it.id)}
+                    className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                    aria-label={`Delete ${it.name}`}
+                  >
+                    Sil
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

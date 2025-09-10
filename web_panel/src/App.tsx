@@ -6,6 +6,8 @@ import Tracks from "./pages/Tracks";
 import Login from "./pages/Login";
 import Database from "./pages/Database";
 import Guard from "./components/Guard";
+import FlaggedArtists from "./pages/FlaggedArtists";
+
 
 function App() {
   return (
@@ -42,6 +44,17 @@ function App() {
           <Guard>
             <Layout>
               <Database />
+            </Layout>
+          </Guard>
+        }
+      />
+
+        <Route
+        path="/flagged-artists"
+        element={
+          <Guard>
+            <Layout>
+              <FlaggedArtists />
             </Layout>
           </Guard>
         }

@@ -4,10 +4,11 @@ from spotify_client.client import get_spotify_client
 from utils.logger import get_logger
 from spotify_client.track import get_track_info
 from db.track_storage import TrackStorage
-
+from db.flagged_artists import get_flagged_names_set
 
 logger = get_logger(__name__)
 sp = get_spotify_client()
+
 
 def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
     """
@@ -41,6 +42,7 @@ def search_artist_playlists(artist_name: str, limit: int = 10) -> list[dict]:
         logger.exception(f"[HATA] Playlist arama başarısız: {artist_name}")
         return []
 
+
 def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
     """
     Belirli bir kullanıcının sahip olduğu public playlistleri getirir.
@@ -64,11 +66,16 @@ def get_owner_playlists(owner_id: str, limit: int = 5) -> list[dict]:
         logger.exception(f"[HATA] Owner playlistleri alınamadı: {owner_id}")
         return []
 
+
 def scan_playlist_for_unplayable_tracks(
     playlist_id: str,
     market: str | None = None,
     owner: str | None = None
 ) -> list[dict]:
+    """
+    Playlist içindeki unplayable trackleri tarar.
+    Flagged artist'lerin parçaları DB'ye kaydedilmez ve kullanıcıya gösterilmez.
+    """
     logger.debug(f"Playlist taranıyor: {playlist_id} (market={market})")
     bad_tracks = []
 
@@ -88,6 +95,7 @@ def scan_playlist_for_unplayable_tracks(
             kwargs["market"] = market
 
         results = sp.playlist_tracks(**kwargs)
+        flagged = get_flagged_names_set()  # hızlı lookup için set
 
         for item in results.get("items", []):
             track = item.get("track")
@@ -104,6 +112,11 @@ def scan_playlist_for_unplayable_tracks(
                 # Artist ismini al
                 artists = track.get("artists", [])
                 artist_name = artists[0]["name"] if artists else None
+
+                # Flagged kontrolü
+                if artist_name in flagged:
+                    logger.info(f"[SKIP] Flagged artist bulundu: {artist_name} (playlist={playlist_id})")
+                    continue
 
                 if not track_id or not track_name:
                     logger.warning(f"[SKIP] Track ID veya isim eksik: playlist={playlist_id}")
@@ -134,20 +147,6 @@ def scan_playlist_for_unplayable_tracks(
                         })
 
                     storage.close()
-
-                    # Albüm adı boşsa Single yaz
-                    album_name = track_info.get("album", {}).get("name", "Single")
-
-                    bad_tracks.append({
-                        "track_id": track_info.get("id"),
-                        "track_name": track_info.get("name"),
-                        "artist_name": artist_name,
-                        "playlist_id": playlist_id,
-                        "image_url": image_url,
-                        "album_name": album_name,
-                        "popularity": track_info.get("popularity", "Bilinmiyor"),
-                        "duration_ms": track_info.get("duration_ms")
-                    })
 
         logger.info(f"{len(bad_tracks)} unplayable track bulundu: {playlist_id}")
         return bad_tracks

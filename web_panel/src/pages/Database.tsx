@@ -11,8 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatNumber } from "../utils/format";
-import { SeparatorHorizontal } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface DbTrack {
   id?: string;
@@ -84,6 +83,7 @@ export default function Database() {
   const [streams, setStreams] = useState<Record<string, StreamState>>({});
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const navigate = useNavigate();
 
   // Track listesi
   useEffect(() => {
@@ -191,14 +191,16 @@ export default function Database() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2x1 font-semibold">Track Database</h1>
-
-      <SeparatorHorizontal>|</SeparatorHorizontal>
-
-        <Link to="/database/flagged-artists">
-          <button aria-label="Open Flagged Artists">Flagged Artists</button>
-        </Link>
-
+      <div className="flex items-center gap-4">
+        <h1 className="text-2x1 font-semibold">Track Database</h1>
+        <h2 className="text-sm text-gray-600 gap-4">|</h2>
+        <button 
+          onClick={() => navigate("/flagged-artists")}
+          className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200"
+        >
+          Flagged Artists
+        </button>
+      </div>
       <div className="flex items-end gap-4">
         <div>
           <label className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>

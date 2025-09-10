@@ -98,7 +98,7 @@ def get_flagged_names_set() -> Set[str]:
         c = conn.cursor()
         c.execute("SELECT name FROM flagged_artists")
         rows = c.fetchall()
-        return set(r[0] for r in rows)
+        return (r[0] for r in rows)
     except Exception as e:
         logger.exception("get_flagged_names_set hata: %s", e)
         return set()

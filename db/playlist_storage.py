@@ -4,6 +4,7 @@ import sqlite3
 from typing import List
 from datetime import datetime
 from utils.logger import get_logger
+from datetime import timezone
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,7 @@ class PlaylistStorage:
         if not tracks:
             logger.info("Kaydedilecek unplayable track bulunamadı.")
             return
-        scan_date = datetime.utcnow().isoformat()
+        scan_date = datetime.now(timezone.utc).isoformat()
         try:
             for track in tracks:
                 self.c.execute(

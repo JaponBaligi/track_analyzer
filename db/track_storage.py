@@ -293,7 +293,7 @@ class TrackStorage:
             self.conn.close()
 
 # ---- Modül-dışı uyumluluk ----
-def save_track_stream_data(track_id: str, historical_data: dict, current_data: dict, owner: str):
+def save_track_stream_data(track_id: str, historical_data: dict, owner: str):
     storage = TrackStorage()
     try:
         storage.save_track_stream_data(track_id, historical_data, owner)

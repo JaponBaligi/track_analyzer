@@ -41,7 +41,8 @@ class TrackStorage:
                 image_url TEXT,
                 playlist_id TEXT,
                 added_at TEXT,
-                owner TEXT
+                owner TEXT,
+                isrc TEXT
             )
         """)
 
@@ -71,6 +72,10 @@ class TrackStorage:
         if not self._column_exists("unplayable_tracks", "owner"):
             self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN owner TEXT")
 
+        # Migration: isrc kolonu yoksa ekle
+        if not self._column_exists("unplayable_tracks", "isrc"):
+            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN isrc TEXT")    
+
         self.conn.commit()
 
     # ---------- UPSERTS ----------
@@ -80,7 +85,7 @@ class TrackStorage:
         Track verisini (Spotify'dan çekilmiş tam veri) kaydeder veya günceller.
         Beklenen keys:
             id, name, artist_names (list veya JSON), album_name, duration_ms, popularity,
-            is_playable, spotify_url, image_url, playlist_id, added_at
+            is_playable, spotify_url, image_url, playlist_id, added_at, isrc
         """
         try:
             artist_names = track_data.get("artist_names")
@@ -90,8 +95,8 @@ class TrackStorage:
             self.c.execute("""
                 INSERT INTO unplayable_tracks (
                     id, name, artist_names, album_name, duration_ms, popularity,
-                    is_playable, spotify_url, image_url, playlist_id, added_at, owner
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name=excluded.name,
                     artist_names=excluded.artist_names,
@@ -103,7 +108,8 @@ class TrackStorage:
                     image_url=excluded.image_url,
                     playlist_id=excluded.playlist_id,
                     added_at=excluded.added_at,
-                    owner=COALESCE(excluded.owner, owner)
+                    owner=COALESCE(excluded.owner, owner),
+                    isrc=excluded.isrc
             """, (
                 track_data.get("id"),
                 track_data.get("name"),
@@ -116,7 +122,8 @@ class TrackStorage:
                 track_data.get("image_url"),
                 track_data.get("playlist_id"),
                 track_data.get("added_at"),
-                owner
+                owner,
+                track_data.get("isrc")
             ))
             self.conn.commit()
         except Exception as e:
@@ -213,7 +220,7 @@ class TrackStorage:
             if owner:
                 self.c.execute("""
                     SELECT id, name, artist_names, album_name, duration_ms, popularity,
-                           is_playable, spotify_url, image_url, playlist_id, added_at, owner
+                           is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
                     FROM unplayable_tracks
                     WHERE (owner IS NULL OR owner = ?)
                     ORDER BY added_at DESC
@@ -222,7 +229,7 @@ class TrackStorage:
             else:
                 self.c.execute("""
                     SELECT id, name, artist_names, album_name, duration_ms, popularity,
-                           is_playable, spotify_url, image_url, playlist_id, added_at, owner
+                           is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
                     FROM unplayable_tracks
                     ORDER BY added_at DESC
                     LIMIT ?

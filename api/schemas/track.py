@@ -20,3 +20,7 @@ class TrackEvaluationResponse(BaseModel):
     popularity: Optional[int] = Field(None, description="Parçanın popülerlik değeri, varsa")
     stream_count: Optional[int] = Field(None, description="Parçanın tahmini stream sayısı, varsa")
     message: Optional[str] = Field(None, description="Değerlendirme ile ilgili ek mesaj")
+
+
+class DeleteTracksPayload(BaseModel):
+    ids: List[str]

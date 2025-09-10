@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Music2, User, AlertTriangle, Link as LinkIcon, Clock } from "lucide-react";
 import { Playlist, Track } from "../types";
-import { cn } from "../lib/utils";
 import { formatDuration } from "../utils/format"; // Süre formatlama yardımcı fonksiyonu (ms => mm:ss)
 import { useAppContext } from "../context/AppContext";
 import { evaluateTrack } from "../api/spotify";

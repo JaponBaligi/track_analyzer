@@ -7,6 +7,7 @@ from .track_routes import router as track_router
 from .streams import router as streams_router
 from .auth import router as auth_router
 from .db_view import router as db_router
+from .flagged_artists import router as flagged_router
 
 router = APIRouter()
 
@@ -14,17 +15,21 @@ router = APIRouter()
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 # App endpoints
+# Artist routes (search / scan)
 router.include_router(artist_router, prefix="/artists", tags=["artists"])
+
+# Playlist routes
 router.include_router(playlist_router, prefix="/playlists", tags=["playlists"])
 
 # Track routes
-# -> /api/tracks/evaluate, /api/tracks/unplayable, /api/stream/update
-router.include_router(track_router, prefix="", tags=["tracks"])
-router.include_router(db_view.router, prefix="/tracks")
+# Track routes
+router.include_router(track_router, prefix="/tracks", tags=["tracks"])
+router.include_router(db_view.router, prefix="/tracks", tags=["tracks-db"])
+router.include_router(db_router, prefix="/db", tags=["db"])
 
 # Stream routes
-# -> /api/streams/{track_id} (frontend ile birebir eşleşiyor)
 router.include_router(streams_router, prefix="", tags=["streams"])
 
-# DB views (protected)
-router.include_router(db_router, prefix="/db", tags=["db"])
+# Flagged Artist routes
+# Will expose paths like /api/flagged-artists when the main app mounts this router at /api
+router.include_router(flagged_router, prefix="", tags=["Flagged Artists"])

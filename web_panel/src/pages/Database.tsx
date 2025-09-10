@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatNumber } from "../utils/format";
+import { useNavigate } from "react-router-dom";
 
 interface DbTrack {
   id?: string;
@@ -82,6 +83,7 @@ export default function Database() {
   const [streams, setStreams] = useState<Record<string, StreamState>>({});
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const navigate = useNavigate();
 
   // Track listesi
   useEffect(() => {
@@ -90,7 +92,7 @@ export default function Database() {
       try {
         setLoading(true);
         setError(undefined);
-        const { data } = await axios.get("/db/unplayable", { params: { limit: 500 } });
+        const { data } = await axios.get("/db/unplayable", { params: { limit: 1000 } });
         if (!mounted) return;
         const items: DbTrack[] = Array.isArray(data) ? data : data?.items ?? [];
         setTracks(items);
@@ -107,7 +109,7 @@ export default function Database() {
 
   // Stream verisini getir (DB veya RapidAPI)
   const fetchStreams = async (trackId: string, forceUpdateAndSave = false) => {
-    if (!forceUpdateAndSave && streams[trackId]?.data) return; // DB’de varsa fetch yapma
+    if (!forceUpdateAndSave && streams[trackId]?.data) return;
 
     setStreams((s) => ({
       ...s,
@@ -131,7 +133,7 @@ export default function Database() {
         series = res.data.historicalData;
       }
 
-      if (!series || !series.length) {
+      if (!series?.length) {
         throw new Error("Stream verisi bulunamadı.");
       }
 
@@ -175,7 +177,12 @@ export default function Database() {
     let filtered = st.data;
     if (startDate) filtered = filtered.filter((p) => p.date >= startDate);
     if (endDate) filtered = filtered.filter((p) => p.date <= endDate);
-    return [...filtered].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const compareDates = (a: StreamPoint, b: StreamPoint) => {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return 0;
+    };
+    return [...filtered].sort(compareDates);
   }, [selectedTrackId, streams, startDate, endDate]);
 
   const rangeAvg = useMemo(() => average(toDaily(selectedSeries)), [selectedSeries]);
@@ -189,16 +196,24 @@ export default function Database() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Database</h1>
-
+      <div className="flex items-center gap-4">
+        <h1 className="text-2x1 font-semibold">Track Database</h1>
+        <h2 className="text-sm text-gray-600 gap-4">|</h2>
+        <button 
+          onClick={() => navigate("/flagged-artists")}
+          className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200"
+        >
+          Flagged Artists
+        </button>
+      </div>
       <div className="flex items-end gap-4">
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>
-          <input type="date" className="border rounded px-2 py-1" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>
+          <input id="start-date" type="date" className="border rounded px-2 py-1" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Bitiş Tarihi</label>
-          <input type="date" className="border rounded px-2 py-1" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <label htmlFor="end-date" className="block text-sm text-gray-600 mb-1">Bitiş Tarihi</label>
+          <input id="end-date" type="date" className="border rounded px-2 py-1" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>
       </div>
 

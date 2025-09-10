@@ -15,7 +15,7 @@ type Props = {
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <div className="bg-white p-2 rounded shadow text-sm">
         <div className="font-semibold">{label}</div>

@@ -7,6 +7,7 @@ from spotify_client.playlist_scanner import (
 )
 from spotify_client.artist_utils import get_artist_id
 from utils.logger import get_logger
+from db.track_filter import should_skip_track
 
 logger = get_logger(__name__)
 
@@ -68,7 +69,7 @@ def pseudo_recursive_scan(
                 if owner not in visited_owners:
                     next_level_owners.add(owner)
                     try:
-                        owner_playlists = get_owner_playlists(owner, limit=5)
+                        owner_playlists = get_owner_playlists(owner, limit=10)
                         new_playlists.extend(owner_playlists)
                         logger.debug(f"{owner} kullanıcısının diğer playlistleri eklendi.")
                     except Exception as e:

@@ -6,7 +6,7 @@ const { exec } = require('child_process');
 
 function createWindow() {
   exec('start cmd /k uvicorn main:app --port 8000', {
-    cwd: path.join(__dirname, '../backend')
+    cwd: path.join(__dirname, '../')
   });
 
   const win = new BrowserWindow({

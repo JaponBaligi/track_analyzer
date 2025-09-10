@@ -12,6 +12,7 @@ def main():
             time.sleep(60)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler worker shutting down...")
+        raise
 
 if __name__ == "__main__":
     main()

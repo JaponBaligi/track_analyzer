@@ -48,4 +48,3 @@ def delete_flagged(artist_id: int, owner: str = Depends(get_current_user)):
     ok = fa.delete_flagged_artist(artist_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Not found")
-    return

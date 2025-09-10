@@ -35,7 +35,7 @@ export default function FlaggedArtistsPage() {
     }
     setLoading(true);
     try {
-      const added = await addFlaggedArtist(trimmed);
+      await addFlaggedArtist(trimmed);
       // API returns created object; reload list
       const items = await fetchFlaggedArtists();
       setList(Array.isArray(items) ? items : []);
@@ -68,9 +68,10 @@ export default function FlaggedArtistsPage() {
       </div>
 
       <form onSubmit={(e) => handleAdd(e)} className="mb-4">
-        <label className="block mb-2 font-medium">Tam Artist Adını Girin (büyük-küçük harf duyarlı)</label>
+        <label htmlFor="artist-name-input" className="block mb-2 font-medium">Tam Artist Adını Girin (büyük-küçük harf duyarlı)</label>
         <div className="flex gap-2">
           <input
+            id="artist-name-input"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="flex-1 px-3 py-2 border rounded"

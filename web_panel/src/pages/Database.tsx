@@ -133,7 +133,7 @@ export default function Database() {
         series = res.data.historicalData;
       }
 
-      if (!series || !series.length) {
+      if (!series?.length) {
         throw new Error("Stream verisi bulunamadı.");
       }
 
@@ -177,7 +177,12 @@ export default function Database() {
     let filtered = st.data;
     if (startDate) filtered = filtered.filter((p) => p.date >= startDate);
     if (endDate) filtered = filtered.filter((p) => p.date <= endDate);
-    return [...filtered].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const compareDates = (a: StreamPoint, b: StreamPoint) => {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return 0;
+    };
+    return [...filtered].sort(compareDates);
   }, [selectedTrackId, streams, startDate, endDate]);
 
   const rangeAvg = useMemo(() => average(toDaily(selectedSeries)), [selectedSeries]);
@@ -203,12 +208,12 @@ export default function Database() {
       </div>
       <div className="flex items-end gap-4">
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>
-          <input type="date" className="border rounded px-2 py-1" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>
+          <input id="start-date" type="date" className="border rounded px-2 py-1" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Bitiş Tarihi</label>
-          <input type="date" className="border rounded px-2 py-1" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <label htmlFor="end-date" className="block text-sm text-gray-600 mb-1">Bitiş Tarihi</label>
+          <input id="end-date" type="date" className="border rounded px-2 py-1" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>
       </div>
 

@@ -1,9 +1,10 @@
 # api/routes/db_view.py
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Body
 from api.dependencies import get_current_user
 from db.track_storage import TrackStorage
-
+from typing import List
+from api.schemas.track import DeleteTracksPayload
 router = APIRouter()
 
 
@@ -26,6 +27,21 @@ def delete_track_route(track_id: str):
         if not deleted:
             raise HTTPException(status_code=404, detail="Track not found")
         return {"status": "ok", "deleted": track_id}
+    finally:
+        storage.close()
+
+@router.post("/delete_bulk")
+def delete_tracks_bulk(payload: DeleteTracksPayload):
+    ids = payload.ids
+    if not ids:
+        raise HTTPException(status_code=400, detail="No track IDs provided")
+    storage = TrackStorage()
+    deleted_ids = []
+    try:
+        for track_id in ids:
+            if storage.delete_track(track_id):
+                deleted_ids.append(track_id)
+        return {"status": "ok", "deleted": deleted_ids}
     finally:
         storage.close()
 

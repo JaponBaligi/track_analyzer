@@ -29,6 +29,7 @@ interface DbTrack {
   spotify_url?: string;
   track_url?: string;
   playlist_id?: string;
+  isrc?: string;
 }
 
 type StreamPoint = { date: string; streams: number };
@@ -59,7 +60,6 @@ function getTrackArtist(t: DbTrack): string {
   return "Bilinmiyor";
 }
 
-
 function toDaily(series: StreamPoint[]): number[] {
   const out: number[] = [];
   for (let i = 1; i < series.length; i++) {
@@ -81,6 +81,7 @@ export default function Database() {
   const [error, setError] = useState<string>();
   const [selectedTrackId, setSelectedTrackId] = useState<string>();
   const [streams, setStreams] = useState<Record<string, StreamState>>({});
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const navigate = useNavigate();
@@ -151,13 +152,34 @@ export default function Database() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await axios.delete(`/tracks/${id}`);
-      console.log("[DEBUG] Silme cevabı:", res.data);
-      // Başarılı olursa frontend listesinden çıkar
+      await axios.delete(`/tracks/${id}`);
       setTracks((prev) => prev.filter((t) => t.id !== id));
+      setSelectedForDelete((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     } catch (err: any) {
       console.error("[ERROR] Silme hatası:", err.response?.data || err.message);
       setError(err.response?.data?.detail || err.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedForDelete);
+    if (!ids.length) return;
+    try {
+      await axios.post("/tracks/delete_bulk", { ids }); // POST ile değişti
+      setTracks((prev) => prev.filter((t) => !selectedForDelete.has(getTrackId(t))));
+      setSelectedForDelete(new Set());
+    } catch (err: any) {
+      console.error("[ERROR] Toplu silme hatası:", err.response?.data || err.message);
+      const errorDetail = err.response?.data?.detail;
+      if (Array.isArray(errorDetail)) {
+        setError(errorDetail.map((d: any) => d.msg).join(", "));
+      } else {
+        setError(errorDetail || err.message);
+      }
     }
   };
 
@@ -168,7 +190,6 @@ export default function Database() {
     }
   }, [tracks]);
 
-  // Seçili track’in filtrelenmiş verisi
   const selectedSeries = useMemo(() => {
     if (!selectedTrackId) return [];
     const st = streams[selectedTrackId];
@@ -177,11 +198,7 @@ export default function Database() {
     let filtered = st.data;
     if (startDate) filtered = filtered.filter((p) => p.date >= startDate);
     if (endDate) filtered = filtered.filter((p) => p.date <= endDate);
-    const compareDates = (a: StreamPoint, b: StreamPoint) => {
-      if (a.date < b.date) return -1;
-      if (a.date > b.date) return 1;
-      return 0;
-    };
+    const compareDates = (a: StreamPoint, b: StreamPoint) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     return [...filtered].sort(compareDates);
   }, [selectedTrackId, streams, startDate, endDate]);
 
@@ -206,6 +223,7 @@ export default function Database() {
           Flagged Artists
         </button>
       </div>
+
       <div className="flex items-end gap-4">
         <div>
           <label htmlFor="start-date" className="block text-sm text-gray-600 mb-1">Başlangıç Tarihi</label>
@@ -220,7 +238,16 @@ export default function Database() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Track listesi */}
         <div className="lg:col-span-1 border rounded-xl overflow-hidden">
-          <div className="bg-gray-50 px-4 py-2 font-medium">Parçalar</div>
+          <div className="bg-gray-50 px-4 py-2 font-medium flex justify-between items-center">
+            <span>Parçalar</span>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedForDelete.size === 0}
+              className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 text-sm"
+            >
+              Toplu Sil
+            </button>
+          </div>
           <div className="max-h-[70vh] overflow-auto divide-y">
             {loading && <div className="p-4 text-sm text-gray-500">Yükleniyor…</div>}
             {error && <div className="p-4 text-sm text-red-600">{error}</div>}
@@ -229,22 +256,37 @@ export default function Database() {
               const tid = getTrackId(t);
               const active = tid === selectedTrackId;
               const img = getTrackImage(t);
+              const checked = selectedForDelete.has(tid);
               return (
-                <button
-                  key={tid}
-                  onClick={() => setSelectedTrackId(tid)}
-                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 ${active ? "bg-indigo-50" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    {img ? <img src={img} alt={t.name} className="w-10 h-10 rounded object-cover" /> : <div className="w-10 h-10 rounded bg-gray-200" />}
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{t.name}</div>
-                      <div className="truncate text-xs text-gray-500">
-                        {(getTrackArtist(t)  + (getTrackAlbum(t) ? ` • ${getTrackAlbum(t)}` : ""))}
+                <div key={tid} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      setSelectedForDelete((prev) => {
+                        const newSet = new Set(prev);
+                        if (e.target.checked) newSet.add(tid);
+                        else newSet.delete(tid);
+                        return newSet;
+                      });
+                    }}
+                    className="mx-2 transform scale-150"
+                  />
+                  <button
+                    onClick={() => setSelectedTrackId(tid)}
+                    className={`w-full text-left px-2 py-3 hover:bg-gray-50 ${active ? "bg-indigo-50" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {img ? <img src={img} alt={t.name} className="w-10 h-10 rounded object-cover" /> : <div className="w-10 h-10 rounded bg-gray-200" />}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{t.name}</div>
+                        <div className="truncate text-xs text-gray-500">
+                          {getTrackArtist(t) + (getTrackAlbum(t) ? ` • ${getTrackAlbum(t)}` : "")}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -257,8 +299,15 @@ export default function Database() {
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm text-gray-600">
-                  Seçili Parça ID: <span className="font-mono">{selectedTrackId}</span>
+                <div className="text-sm text-gray-600 flex flex-wrap items-center gap-4">
+                  <span>
+                    Seçili Parça ID: <span className="font-mono">{selectedTrackId}</span>
+                  </span>
+                  {selectedTrack?.isrc && (
+                    <span>
+                      ISRC: <span className="font-mono">{selectedTrack.isrc}</span>
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {(!streams[selectedTrackId]?.data || streams[selectedTrackId]?.error) && (
@@ -272,7 +321,6 @@ export default function Database() {
                   )}
                 </div>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="border rounded-lg p-3">
                   <div className="text-xs text-gray-500">Tarihler Arası Ortalama Stream</div>
@@ -309,7 +357,7 @@ export default function Database() {
                 )}
               </div>
 
-              {/* --- Track Bilgi Kartı --- */}
+              {/* Track Bilgi Kartı */}
               {selectedTrack && (
                 <div className="mt-4 border rounded-lg p-4 bg-gray-50 shadow-sm space-y-2">
                   <div className="flex items-center gap-3">
@@ -364,7 +412,9 @@ export default function Database() {
                       <button
                         onClick={() => selectedTrack.id && handleDelete(selectedTrack.id)}
                         className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
-                        > Sil </button>
+                      >
+                        Sil
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -29,7 +29,7 @@ def get_track_popularity(track_id: str) -> int | None:
 
 def get_track_info(track_id: str) -> dict | None:
     """
-    Belirtilen track ID için tam bilgileri döner (kapak fotoğrafı dahil).
+    Belirtilen track ID için tam bilgileri döner.
     """
     try:
         logger.debug(f"Track bilgileri sorgulanıyor: {track_id}")
@@ -49,6 +49,7 @@ def get_track_info(track_id: str) -> dict | None:
             "is_playable": track.get("is_playable", True),
             "spotify_url": track["external_urls"]["spotify"],
             "image_url": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
+            "isrc": track.get("external_ids", {}).get("isrc")
         }
 
     except Exception as e:

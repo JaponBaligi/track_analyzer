@@ -82,7 +82,7 @@ def scan_playlist_for_unplayable_tracks(
     try:
         limit = 100
         offset = 0
-        flagged = get_flagged_names_set()
+        flagged = get_flagged_names_set(owner=owner)
 
         while True:
             kwargs = {

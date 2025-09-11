@@ -22,8 +22,7 @@ router.include_router(artist_router, prefix="/artists", tags=["artists"])
 router.include_router(playlist_router, prefix="/playlists", tags=["playlists"])
 
 # Track routes
-# Track routes
-router.include_router(track_router, prefix="/tracks", tags=["tracks"])
+router.include_router(track_router, prefix="", tags=["tracks"])
 router.include_router(db_view.router, prefix="/tracks", tags=["tracks-db"])
 router.include_router(db_router, prefix="/db", tags=["db"])
 

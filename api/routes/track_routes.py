@@ -11,7 +11,7 @@ import json
 router = APIRouter(tags=["Track"])
 logger = get_logger(__name__)
 
-@router.get("/evaluate")
+@router.get("/tracks/evaluate")
 def track_evaluation(track_id: str = Query(..., description="Spotify Track ID")):
     """
     Verilen unplayable track ID için popülarite ve sadece historical stream bilgilerini döner.

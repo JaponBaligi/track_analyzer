@@ -6,7 +6,7 @@ import { cn } from "../lib/utils";
 import { Track } from "../types";
 import { evaluateTrack } from "../api/spotify";
 import { formatDuration, formatNumber, formatImageUrl } from "../utils/format";
-import { StreamHistoryChart } from "./StreamHistoryChart"; // Grafiği ekledik
+import { StreamHistoryChart } from "./StreamHistoryChart"; 
 
 type TrackListProps = {
   tracks: Track[];

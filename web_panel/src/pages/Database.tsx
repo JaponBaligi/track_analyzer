@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { formatNumber } from "../utils/format";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../api/axiosInstance";
 
 interface DbTrack {
   id?: string;
@@ -119,10 +120,10 @@ export default function Database() {
 
     try {
       if (forceUpdateAndSave) {
-        await axios.post("/stream/update", null, { params: { track_id: trackId } });
+        await axiosInstance.post("/stream/update", null, { params: { track_id: trackId } });
       }
 
-      const res = await axios.get(`/streams/${trackId}`);
+      const res = await axiosInstance.get(`/streams/${trackId}`);
 
       let series: StreamPoint[] | undefined;
       let dailyAvg: number | null | undefined = undefined;
@@ -169,7 +170,7 @@ export default function Database() {
     const ids = Array.from(selectedForDelete);
     if (!ids.length) return;
     try {
-      await axios.post("/tracks/delete_bulk", { ids }); // POST ile değişti
+      await axios.post("/tracks/delete_bulk", { ids });
       setTracks((prev) => prev.filter((t) => !selectedForDelete.has(getTrackId(t))));
       setSelectedForDelete(new Set());
     } catch (err: any) {
@@ -308,6 +309,18 @@ export default function Database() {
                       ISRC: <span className="font-mono">{selectedTrack.isrc}</span>
                     </span>
                   )}
+                    <div><span className="font-medium">URI: </span>
+                      {selectedTrack && selectedTrack.spotify_url && (
+                        <a
+                          href={`spotify:track:${selectedTrackId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:underline"
+                        >
+                          {`spotify:track:${selectedTrackId}`}
+                        </a>
+                      )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {(!streams[selectedTrackId]?.data || streams[selectedTrackId]?.error) && (
@@ -384,17 +397,10 @@ export default function Database() {
                         : "—"}
                     </div>
                     <div><span className="font-medium">Popülarite:</span> {selectedTrack.popularity ?? "—"}</div>
-                    <div><span className="font-medium">Spotify URI: </span>
-                      {selectedTrack.spotify_url && (
-                        <a
-                          href={`https://open.spotify.com/track/${selectedTrackId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:underline"
-                        >
-                          {`spotify:track:${selectedTrackId}`}
-                        </a>
-                      )}
+                    <div>
+                      <a href={`https://open.spotify.com/track/${selectedTrackId}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                        Spotify Link
+                      </a>
                     </div>
                     <div>
                       {selectedTrack.playlist_id && (

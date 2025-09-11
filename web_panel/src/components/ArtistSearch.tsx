@@ -54,7 +54,7 @@ const ArtistSearch = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyPress}
-          placeholder="Sanatçı adı girin..."
+          placeholder="Playlist adı girin..."
           className="flex-1 px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
           disabled={loading}
         />

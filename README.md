@@ -1,6 +1,47 @@
 # Spotify Track Analyzer
 
-A comprehensive FastAPI application for analyzing Spotify track data, providing insights into track popularity, streaming history, and playlist monitoring.
+A comprehensive application for analyzing Spotify track data, consisting of a FastAPI backend API and a React-based web panel frontend. The system provides insights into track popularity, streaming history, playlist monitoring, and artist analytics.
+
+## 📁 Project Structure
+
+```
+spotify_monitoring/
+├── api/                          # FastAPI backend
+│   ├── main.py                   # Main FastAPI app
+│   ├── routes/                   # API route handlers
+│   │   ├── artists.py
+│   │   ├── auth.py
+│   │   ├── db_view.py
+│   │   ├── flagged_artists.py
+│   │   ├── playlists.py
+│   │   ├── streams.py
+│   │   └── track_routes.py
+│   ├── schemas/                  # Pydantic models
+│   ├── services/                 # Business logic
+│   └── dependencies.py
+├── config/                       # Configuration files
+│   ├── config.py
+│   └── jwt_generator.py
+├── db/                           # Database models and storage
+├── scheduler/                    # Background task scheduler
+├── scraper/                      # Spotify data scraping
+├── spotify_client/               # Spotify API client
+├── utils/                        # Utilities (logger, db, security)
+├── web_panel/                    # React frontend
+│   ├── src/
+│   │   ├── components/           # Reusable UI components
+│   │   ├── pages/                # Main pages (Home, Tracks, Database, etc.)
+│   │   ├── context/              # React context providers
+│   │   ├── hooks/                # Custom React hooks
+│   │   └── types/                # TypeScript type definitions
+│   ├── public/                   # Static assets
+│   └── package.json
+├── analyzer/                     # Track analysis modules
+├── main.py                       # Root FastAPI entry point
+├── requirements.txt              # Python dependencies
+├── docker-compose.yml            # Docker orchestration
+└── README.md
+```
 
 ## 🚀 Features
 
@@ -124,6 +165,9 @@ npm start
 
 ## 🔌 API Endpoints
 
+### Authentication
+- `POST /api/auth/login` - User login (if implemented)
+
 ### Artists
 - `POST /api/artists/scan` - Start artist scanning
 - `GET /api/artists/info` - Get artist basic info
@@ -132,11 +176,18 @@ npm start
 - `GET /api/playlists/` - List all tracked playlists
 - `GET /api/playlists/{id}/unplayable-tracks` - Get unplayable tracks
 
+### Tracks
+- `GET /api/tracks/` - Track related endpoints (various)
+- `GET /api/tracks/{track_id}/popularity` - Get track popularity score
+
 ### Streams
 - `GET /api/streams/{track_id}` - Get stream history and daily averages
 
-### Tracks
-- `GET /api/tracks/{track_id}/popularity` - Get track popularity score
+### Database Views
+- `GET /api/db/` - Database related views and queries
+
+### Flagged Artists
+- `GET /api/flagged-artists/` - Get flagged artists list
 
 ## 📊 Data Models
 

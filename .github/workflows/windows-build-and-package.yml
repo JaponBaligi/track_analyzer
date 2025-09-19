@@ -26,7 +26,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Show repo tree (debug)
-        run: dir /s
+        run: |
+          Get-ChildItem -Force -Recurse
 
       - name: Install Python deps and Nuitka
         run: |

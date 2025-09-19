@@ -27,38 +27,51 @@ jobs:
 
       - name: Show repo tree (debug)
         run: |
-          Get-ChildItem -Force -Recurse
+          # PowerShell biçimi; çalıştığın repository root içeriğini listeler
+          Get-ChildItem -Force -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1000
 
       - name: Install Python deps and Nuitka
         run: |
           python -m pip install --upgrade pip
-          pip install -r track_analyzer-main/requirements.txt
+          # requirements.txt repo kökündeyse bu path doğrudur
+          if (Test-Path .\requirements.txt) {
+            pip install -r requirements.txt
+          } else {
+            Write-Host "requirements.txt bulunamadı; gerekiyorsa path'i kontrol et."
+          }
           pip install nuitka cython
+        shell: powershell
 
       - name: Build backend with Nuitka (Windows standalone onefile)
-        working-directory: track_analyzer-main
+        working-directory: ${{ github.workspace }}
         shell: powershell
         run: |
-          # Ensure output dir
-          $out = Join-Path $PWD "..\artifacts\backend"
+          $out = Join-Path $PWD "artifacts\backend"
           if (-Not (Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
-          # Build: api\main.py -> produces an exe in artifacts\backend
-          nuitka --standalone --onefile --windows-disable-console api\main.py --output-dir=$out
+          # api\main.py repo kökünde api\main.py varsa doğru. Yoksa path'i düzelt.
+          if (-Not (Test-Path ".\api\main.py")) {
+            Write-Host "Warning: .\api\main.py bulunamadı. Lütfen backend giriş yolunu kontrol et."
+            exit 1
+          }
+          nuitka --standalone --onefile --windows-disable-console .\api\main.py --output-dir=$out
 
       - name: Build frontend (React) and obfuscate
-        working-directory: track_analyzer-main\web_panel
+        working-directory: web_panel
         shell: powershell
         run: |
           npm ci
           npm run build
+          # javascript-obfuscator yüklü değilse npx kullan
           npx javascript-obfuscator build\static\js --output build\static\js --compact true --controlFlowFlattening true --deadCodeInjection true --stringArray true --rotateStringArray true
           # remove source maps if any
           Get-ChildItem -Path build -Include *.map -Recurse | Remove-Item -Force
 
       - name: Collect frontend artifact
+        shell: powershell
         run: |
-          mkdir -Force artifacts\frontend
-          robocopy track_analyzer-main\web_panel\build artifacts\frontend\build /E
+          $dest = Join-Path $PWD "..\artifacts\frontend\build"
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          robocopy .\build $dest /E
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

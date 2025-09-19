@@ -1,0 +1,66 @@
+name: Windows Build & Package
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    env:
+      PYTHON_VERSION: '3.11'
+      NODE_VERSION: '18'
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Show repo tree (debug)
+        run: dir /s
+
+      - name: Install Python deps and Nuitka
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r track_analyzer-main/requirements.txt
+          pip install nuitka cython
+
+      - name: Build backend with Nuitka (Windows standalone onefile)
+        working-directory: track_analyzer-main
+        shell: powershell
+        run: |
+          # Ensure output dir
+          $out = Join-Path $PWD "..\artifacts\backend"
+          if (-Not (Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
+          # Build: api\main.py -> produces an exe in artifacts\backend
+          nuitka --standalone --onefile --windows-disable-console api\main.py --output-dir=$out
+
+      - name: Build frontend (React) and obfuscate
+        working-directory: track_analyzer-main\web_panel
+        shell: powershell
+        run: |
+          npm ci
+          npm run build
+          npx javascript-obfuscator build\static\js --output build\static\js --compact true --controlFlowFlattening true --deadCodeInjection true --stringArray true --rotateStringArray true
+          # remove source maps if any
+          Get-ChildItem -Path build -Include *.map -Recurse | Remove-Item -Force
+
+      - name: Collect frontend artifact
+        run: |
+          mkdir -Force artifacts\frontend
+          robocopy track_analyzer-main\web_panel\build artifacts\frontend\build /E
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-artifacts
+          path: artifacts

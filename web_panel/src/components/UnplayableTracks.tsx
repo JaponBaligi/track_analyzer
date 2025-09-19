@@ -25,12 +25,16 @@ const UnplayableTracks: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground px-4 py-2">Yükleniyor...</p>;
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+        Yükleniyor...
+      </p>
+    );
   }
 
   if (!tracks.length) {
     return (
-      <p className="text-sm text-center text-muted-foreground italic px-4 py-2">
+      <p className="text-sm text-center text-gray-500 dark:text-gray-400 italic px-4 py-2">
         Aramaya devam et; tarih arayıp bulamayanları unutulmuşluğun sessizliğine gömer.
       </p>
     );
@@ -38,7 +42,9 @@ const UnplayableTracks: React.FC = () => {
 
   return (
     <div className="px-4 py-2">
-      <h2 className="text-lg font-semibold mb-2">Çalınamayan Şarkılar</h2>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        Çalınamayan Şarkılar
+      </h2>
       <TrackList tracks={tracks} />
     </div>
   );

@@ -1,29 +1,33 @@
+// src/components/Header.tsx
 import { useNavigate } from "react-router-dom";
 
 export default function Header() {
   const navigate = useNavigate();
 
   const logout = () => {
-    localStorage.removeItem("token"); // tokenları temizle
-    navigate("/login"); // login sayfasına yönlendir
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   return (
-    <header className="bg-gray-800 text-white p-4 flex justify-between items-center">
-      <h1 className="text-lg font-bold">🎧 Metricify</h1>
-      <nav className="space-x-4">
-        {/* Arama butonu: "/" sayfasına yönlendirir */}
+    <header className="bg-gray-800 text-gray-100 p-4 flex justify-between items-center shadow-md sticky top-0 z-50 transition-colors duration-300">
+      {/* Logo / Title */}
+      <h1 className="text-lg font-bold text-blue-400">🎧 Metricify</h1>
+
+      {/* Navigation Buttons */}
+      <nav className="flex items-center gap-3">
+        {/* Arama */}
         <button
           onClick={() => navigate("/")}
-          className="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow-sm hover:shadow-md transition-all duration-300"
         >
           Arama
         </button>
 
-        {/* Database sayfası */}
+        {/* Database */}
         <button
           onClick={() => navigate("/db")}
-          className="hover:underline px-3 py-1 rounded"
+          className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded shadow-sm hover:shadow-md transition-all duration-300"
         >
           Database
         </button>
@@ -31,7 +35,7 @@ export default function Header() {
         {/* Logout */}
         <button
           onClick={logout}
-          className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
+          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded shadow-sm hover:shadow-md transition-all duration-300"
         >
           Çıkış Yap
         </button>

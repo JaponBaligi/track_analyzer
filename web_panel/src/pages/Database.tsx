@@ -282,7 +282,7 @@ export default function Database() {
     if (!selectedTrackId && tracks.length) {
       setSelectedTrackId(getTrackId(tracks[0]));
     }
-  }, [tracks]);
+  }, [tracks,selectedTrackId]);
 
   // Fetch streams
   const fetchStreams = async (trackId: string, forceUpdateAndSave = false) => {

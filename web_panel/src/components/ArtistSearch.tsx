@@ -1,3 +1,5 @@
+// src/components/ArtistSearch.tsx
+
 import { useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { scanArtist } from "../api/spotify";
@@ -5,7 +7,7 @@ import { Search } from "lucide-react";
 
 const ArtistSearch = () => {
   const [input, setInput] = useState("");
-  const [depth, setDepth] = useState(2); // Varsayılan derinlik
+  const [depth, setDepth] = useState(2);
   const {
     setArtist,
     setArtistResults,
@@ -55,7 +57,7 @@ const ArtistSearch = () => {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyPress}
           placeholder="Playlist adı girin..."
-          className="flex-1 px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          className="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
           disabled={loading}
         />
         <input
@@ -64,14 +66,14 @@ const ArtistSearch = () => {
           min={1}
           max={5}
           onChange={(e) => setDepth(Number(e.target.value))}
-          className="w-20 px-2 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          className="w-20 px-2 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
           disabled={loading}
           title="Tarama derinliği"
         />
         <button
           onClick={handleSearch}
           disabled={!input.trim() || loading}
-          className="bg-indigo-500 hover:bg-indigo-600 active:scale-95 transition-transform duration-100 text-white px-4 py-2 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-indigo-500 dark:bg-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-500 active:scale-95 transition-transform duration-100 text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <svg

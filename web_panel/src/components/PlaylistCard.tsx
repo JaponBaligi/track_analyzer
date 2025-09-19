@@ -42,14 +42,14 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
   };
 
   return (
-    <Card className="w-full max-w-xl border border-gray-200 shadow-md hover:shadow-lg transition-all rounded-2xl">
+    <Card className="w-full max-w-xl border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-all rounded-2xl bg-white dark:bg-gray-800">
       <CardContent className="p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <Music2 className="w-4 h-4" />
             <span className="font-medium">Playlist ID:</span> {playlist.id}
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <User className="w-4 h-4" />
             <span className="font-medium">Owner:</span> {playlist.owner}
           </div>
@@ -63,9 +63,9 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
         </div>
 
         {badTracks.length === 0 ? (
-          <div className="text-green-600 text-sm">Tüm parçalar oynatılabilir ✅</div>
+          <div className="text-green-600 dark:text-green-400 text-sm">Tüm parçalar oynatılabilir ✅</div>
         ) : (
-          <div className="text-red-600 text-sm flex flex-col gap-3">
+          <div className="text-red-600 dark:text-red-400 text-sm flex flex-col gap-3">
             <div className="flex items-center gap-1 font-medium text-lg">
               <AlertTriangle className="w-5 h-5" />
               Oynatılamayan parçalar ({badTracks.length}):
@@ -80,8 +80,9 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
                 return (
                   <li
                     key={track.track_id}
-                    className="flex items-center justify-between bg-red-50 border border-red-300 rounded-xl px-4 py-2 shadow-sm"
+                    className="flex items-center justify-between bg-red-50 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-xl px-4 py-2 shadow-sm hover:shadow-md transition-all"
                   >
+                    {/* Track Info */}
                     <div className="flex items-center gap-3 min-w-0">
                       {track.image_url ? (
                         <img
@@ -131,24 +132,26 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
                         </div>
                       </div>
                     </div>
-
+                    {/* Badge & Action */}
                     <div className="flex flex-col items-center space-y-1 min-w-[110px]">
-                      <span className="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-semibold">
+                      <span className="px-2 py-0.5 rounded bg-red-600 dark:bg-red-500 text-white text-xs font-semibold transition-colors">
                         Unplayable
                       </span>
 
                       {streamCount !== undefined && (
-                        <span className="text-xs text-green-700">
+                        <span className="text-xs text-green-700 dark:text-green-400">
                           Stream: {streamCount.toLocaleString()}
                         </span>
                       )}
 
                       {isError && (
-                        <span className="text-xs text-red-600">Stream verisi alınamadı</span>
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          Stream verisi alınamadı
+                        </span>
                       )}
 
                       <button
-                        className="mt-1 rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                        className="mt-1 rounded bg-blue-600 dark:bg-blue-500 text-white px-3 py-1 hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 transition-all"
                         disabled={isLoading}
                         onClick={() => handleGetStreamData(track.track_id)}
                       >

@@ -62,7 +62,7 @@ jobs:
           npm ci
           npm run build
           # javascript-obfuscator yüklü değilse npx kullan
-          npx javascript-obfuscator build\static\js --output build\static\js --compact true --control-flow-flattening true --dead-code-injection true --string-array true --rotate-string-array true
+          npx javascript-obfuscator build\static\js --output build\static\js --compact true --control-flow-flattening true --dead-code-injection true --string-array true --string-array-rotate true --string-array-shuffle true
           # remove source maps if any
           Get-ChildItem -Path build -Include *.map -Recurse | Remove-Item -Force
 

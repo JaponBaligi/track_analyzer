@@ -2,13 +2,17 @@
 import { ReactNode } from "react";
 import Header from "../Header";
 
-export default function Layout({ children }: { readonly children: ReactNode }) {
+interface LayoutProps {
+  readonly children: ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 flex flex-col">
-      {/* Header bileşeni */}
+    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
+      {/* Header */}
       <Header />
 
-      {/* Ana içerik */}
+      {/* Main content */}
       <main className="flex-1 p-6">{children}</main>
     </div>
   );

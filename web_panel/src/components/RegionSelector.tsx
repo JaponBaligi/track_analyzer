@@ -28,20 +28,19 @@ const countries = [
 const RegionSelector = () => {
   const { region, setRegion } = useAppContext();
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRegion(e.target.value);
-  };
-
   return (
     <div className="w-full max-w-xs mx-auto my-4">
-      <label htmlFor="region-select" className="block mb-1 font-semibold text-gray-700">
+      <label
+        htmlFor="region-select"
+        className="block mb-1 font-semibold text-gray-700 dark:text-gray-200"
+      >
         Bölge seçin:
       </label>
       <select
         id="region-select"
         value={region}
-        onChange={handleChange}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+        onChange={(e) => setRegion(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
       >
         {countries.map((country) => (
           <option key={country.code} value={country.code}>

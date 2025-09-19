@@ -7,9 +7,12 @@ import App from "./App";
 import { AppProvider } from "./context/AppContext";
 import "./styles/globals.css"; // Tailwind CSS
 
+// Enable dark mode globally
+document.documentElement.classList.add("dark");
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AppProvider> {/* <- App'i buraya sar */}
+    <AppProvider>
       <BrowserRouter>
         <App />
       </BrowserRouter>

@@ -1,55 +1,62 @@
 // web_panel/src/pages/FlaggedArtists.tsx
+
 import React, { useState, useEffect } from "react";
 import { fetchFlaggedArtists, addFlaggedArtist, deleteFlaggedArtist } from "../api/flaggedArtists";
-import * as FiIcons from "react-icons/fi";
+import { UserPlusIcon, TrashIcon } from "../components/IconWrappers";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface FlaggedArtist {
+  id: number;
+  name: string;
+}
 
 export default function FlaggedArtistsPage() {
   const [name, setName] = useState("");
-  const [list, setList] = useState<Array<{ id: number; name: string }>>([]);
+  const [list, setList] = useState<FlaggedArtist[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const FiUserPlus = FiIcons.FiUserPlus as unknown as React.FC<React.SVGProps<SVGSVGElement>>;
-  const FiTrash2 = FiIcons.FiTrash2 as unknown as React.FC<React.SVGProps<SVGSVGElement>>;
+  const loadList = async () => {
+    try {
+      const data = await fetchFlaggedArtists();
+      setList(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error(e);
+      setError("Flagged Artistler yüklenemedi");
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await fetchFlaggedArtists();
-        setList(Array.isArray(data) ? data : []);
-      } catch (e: any) {
-        console.error(e);
-        setError("Flagged Artistler yüklenemedi");
-      }
-    })();
+    loadList();
   }, []);
 
-  async function handleAdd(e?: React.FormEvent) {
+  const handleAdd = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setMessage(null);
     setError(null);
+
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Tam artist adını girin (Artist adı 'xxxxx' ise 'Xxxxx' yazmayın).");
+      setError("Tam artist adını girin (Artist adı 'xxxxx' ise 'xxxxx' yazın).");
       return;
     }
+
     setLoading(true);
     try {
       await addFlaggedArtist(trimmed);
-      const items = await fetchFlaggedArtists();
-      setList(Array.isArray(items) ? items : []);
+      await loadList();
       setName("");
-      setMessage("Artist veritabanına eklendi, sonraki arama sonuçlarında bu artistin parçaları atlanacak.");
+      setMessage("Artist veritabanına eklendi, sonraki aramalarda bu artist atlanacak.");
     } catch (err: any) {
       console.error(err);
       setError(err?.message || "Artist eklenemedi");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleDelete(id: number) {
+  const handleDelete = async (id: number) => {
     setError(null);
     try {
       await deleteFlaggedArtist(id);
@@ -58,17 +65,17 @@ export default function FlaggedArtistsPage() {
       console.error(err);
       setError("Artist silinemedi");
     }
-  }
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       <div className="md:w-1/3 bg-blue-50 p-6 shadow-md">
         <div className="flex items-center gap-2 mb-6">
-          <FiUserPlus className="text-blue-600 text-2xl" />
+          <UserPlusIcon className="text-blue-600 text-2xl" />
           <h1 className="text-2xl font-bold text-blue-700">Flagged Artists</h1>
         </div>
 
-        <form onSubmit={(e) => handleAdd(e)} className="mb-6">
+        <form onSubmit={handleAdd} className="mb-6">
           <label htmlFor="artist-name-input" className="block mb-2 font-medium text-blue-800">
             Tam Artist Adını Girin
           </label>
@@ -78,7 +85,7 @@ export default function FlaggedArtistsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="flex-1 px-3 py-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-400"
-              placeholder='"xxxxx" ise "xxxxx" yazın, "Xxxxx" değil'
+              placeholder='"xxxxx" ise "xxxxx" yazın'
               aria-label="Artist name"
             />
             <button
@@ -101,21 +108,27 @@ export default function FlaggedArtistsPage() {
           <div className="text-gray-500">Henüz flag'lenmiş artist yok.</div>
         ) : (
           <ul className="space-y-3">
-            {list.map((it) => (
-              <li
-                key={it.id}
-                className="flex justify-between items-center p-4 bg-white shadow rounded hover:shadow-lg transition-shadow duration-200"
-              >
-                <span className="font-medium text-gray-800">{it.name}</span>
-                <button
-                  onClick={() => handleDelete(it.id)}
-                  className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
-                  aria-label={`Delete ${it.name}`}
+            <AnimatePresence>
+              {list.map((it) => (
+                <motion.li
+                  key={it.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex justify-between items-center p-4 bg-white shadow rounded hover:shadow-lg transition-shadow duration-200"
                 >
-                  <FiTrash2 /> Sil
-                </button>
-              </li>
-            ))}
+                  <span className="font-medium text-gray-800">{it.name}</span>
+                  <button
+                    onClick={() => handleDelete(it.id)}
+                    className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+                    aria-label={`Delete ${it.name}`}
+                  >
+                    <TrashIcon className="w-5 h-5" /> Sil
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
           </ul>
         )}
       </div>

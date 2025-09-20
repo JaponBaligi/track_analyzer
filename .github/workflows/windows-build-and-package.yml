@@ -74,12 +74,18 @@ jobs:
           $dest = Join-Path $repo "artifacts\frontend\build"
           if (-Not (Test-Path $src)) {
             Write-Host "ERROR: frontend build not found at $src"
-            Get-ChildItem -Path $repo -Recurse -Depth 2 | Select-Object -First 200 | ForEach-Object { Write-Host $_.FullName }
             exit 1
           }
           New-Item -ItemType Directory -Path $dest -Force | Out-Null
           robocopy $src $dest /E
-
+          if ($LASTEXITCODE -le 3) {
+            # robocopy 0–3 normal kabul edilir
+            Write-Host "Robocopy completed with exit code $LASTEXITCODE (success)"
+            exit 0
+          } else {
+            Write-Host "Robocopy failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -29,6 +29,7 @@ jobs:
         run: |
           # PowerShell biçimi; çalıştığın repository root içeriğini listeler
           Get-ChildItem -Force -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1000
+        shell: powershell
 
       - name: Install Python deps and Nuitka
         run: |
@@ -42,6 +43,30 @@ jobs:
           pip install nuitka cython
         shell: powershell
 
+      - name: Install Dependency Walker (offline fallback for Nuitka)
+        shell: powershell
+        run: |
+          # Bu adım mümkünse Dependency Walker'ı Nuitka'nın cache dizinine indirip açar,
+          # böylece Nuitka interaktif indirme istemez. Eğer indirme engellenirse adım hatası verebilir,
+          # ancak yine de --assume-yes-for-downloads ile devam etmeye çalışacağız.
+          $cache = Join-Path $env:LOCALAPPDATA "Nuitka\Nuitka\Cache\depends\x86_64"
+          New-Item -ItemType Directory -Path $cache -Force | Out-Null
+          $zip = Join-Path $cache "depends.zip"
+          try {
+            $dl = "http://dependencywalker.com/depends22_x64.zip"
+            Write-Host "Downloading Dependency Walker from $dl ..."
+            Invoke-WebRequest -Uri $dl -OutFile $zip -UseBasicParsing -ErrorAction Stop
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $cache)
+            Remove-Item $zip -Force
+            Write-Host "Dependency Walker extracted to $cache"
+            # Ensure cache folder is on PATH
+            $env:PATH = "$cache;$env:PATH"
+          } catch {
+            Write-Host "Warning: Dependency Walker download/extract failed. Will still try Nuitka with --assume-yes-for-downloads."
+          }
+        timeout-minutes: 10
+
       - name: Build backend with Nuitka (Windows standalone onefile)
         working-directory: ${{ github.workspace }}
         shell: powershell
@@ -53,7 +78,10 @@ jobs:
             Write-Host "Warning: .\api\main.py bulunamadı. Lütfen backend giriş yolunu kontrol et."
             exit 1
           }
-          nuitka --standalone --onefile --windows-disable-console .\api\main.py --output-dir=$out
+          # --windows-console-mode=disable replaces deprecated --windows-disable-console
+          # --assume-yes-for-downloads makes Nuitka non-interactive for dependency walker download
+          nuitka --standalone --onefile --windows-console-mode=disable --assume-yes-for-downloads .\api\main.py --output-dir=$out
+        timeout-minutes: 30
 
       - name: Build frontend (React) and obfuscate
         working-directory: web_panel

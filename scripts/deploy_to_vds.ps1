@@ -1,19 +1,3 @@
-<#
-PowerShell deployment script to run ON THE VDS (Windows Server 2019).
-Assumptions:
-- You already copied the CI artifact archive or the unpacked artifacts to the VDS (for example to C:\temp\artifacts)
-- This script will extract/move files to C:\opt\track_analyzer, set NTFS ACLs so only SYSTEM and the service account can read/execute,
-  create a local service account (tracksvc) if not present, and register the backend exe as a Windows Service using NSSM if available,
-  otherwise using sc.exe.
-- Adjust paths and service account name/password handling to match your environment and secret management.
-- Run this script as Administrator.
-
-Usage (on the VDS as Admin):
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-    .\deploy_to_vds.ps1 -ArtifactPath "C:\temp\artifacts" -DeployPath "C:\opt\track_analyzer" -ServiceAccount "tracksvc"
-
-#>
-
 param(
     [Parameter(Mandatory=$true)]
     [string]$ArtifactPath,

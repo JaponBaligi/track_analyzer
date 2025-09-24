@@ -11,10 +11,12 @@ export default function Header() {
 
   return (
     <header className="bg-gray-800 text-gray-100 p-4 flex justify-between items-center shadow-md sticky top-0 z-50 transition-colors duration-300">
+      
       {/* Logo / Title */}
       <h1 className="text-lg font-bold text-blue-400">🎧 Metricify</h1>
 
       {/* Navigation Buttons */}
+      
       <nav className="flex items-center gap-3">
         {/* Arama */}
         <button
@@ -32,7 +34,13 @@ export default function Header() {
           Database
         </button>
 
-        {/* Logout */}
+        <button
+          onClick={() => navigate("/isrc-lookup")}
+          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded shadow-sm hover:shadow-md transition-all duration-300"
+        >
+          ISRC Lookup
+        </button>
+
         <button
           onClick={logout}
           className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded shadow-sm hover:shadow-md transition-all duration-300"

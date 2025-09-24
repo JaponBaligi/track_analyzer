@@ -7,7 +7,7 @@ import Login from "./pages/Login";
 import Database from "./pages/Database";
 import Guard from "./components/Guard";
 import FlaggedArtists from "./pages/FlaggedArtists";
-
+import IsrcLookup from "./pages/IsrcLookup"
 
 function App() {
   return (
@@ -49,6 +49,16 @@ function App() {
         }
       />
 
+            <Route
+        path="/isrc-lookup"
+        element={
+          <Guard>
+            <Layout>
+              <IsrcLookup />
+            </Layout>
+          </Guard>
+        }
+      />
         <Route
         path="/flagged-artists"
         element={

@@ -62,7 +62,7 @@ def get_track_details(track_id: str):
         "accept-language": "tr",
         "app-platform": "WebPlayer",
         "authorization": auth_token,
-        "client-token": "AAAkFxPYGvMXrp98VL52tIVJSoGq4RXfhY7KGtYj2fwb9QU8QPs6TPLAogwvFPTtpvWvT04Qz3GoZYRRKZK0XBcq60Ow4Da1cKU6Ph5ntbruB8RPQ/FesRzr4SPWJB0/xAZaJ6vteu1o2RUWTq88cKhSlMPrdi1ZbVw0i6oYfvvHDLWWEhXgAA9WGI0q+i/XSleGQCUIoRfaezRoN4eu7EMzpZWeLuyclvZHT9I5rMbgfdbSuhfxUuDkuwofUIi4MsjNK9ePvWW9iB/PXr69y5ntprjCAN59/6q4vpMnhPbEcG0d+XEFl0laWVM/22Djm9WTy+6h0k0aoyDNFvRWvDUv+wv67x8\u003d",
+        "client-token": "AAAAwKf027OjS/J2/V+h7MqG8Usltweu1SaIV1gY6RlP/bJcT0nVHg0J8Tdc05ySxe9/i+EQrsJ4SS4BH5UC2AoX3S/VFsckIpB6vUUUIJEOZxE6TNnFyhuaUlV+QlgV0hNpFeCgj2cwbgB062ZMmBgoZdz233RBrSQliQICettSgSIIGmMqve4z70bAje4QNRJaFFhiC/25OpxwjnM8Cwtkxg4Yd/l+qsVaDzqnv9zHPB7HZ/Wab7eJNTQCpwzoKDXDVwbe389cXrSmg7KeCIbUR4Ooyvgeg4S7jNBlwNLa+DzAs80uYmG+FkzxEzA35cgprkItoT+1xhLKd9Zok90M3thy",
         "referer": "https://open.spotify.com/",
     }
     url = f"https://spclient.wg.spotify.com/metadata/4/track/{gid}?market=from_token"

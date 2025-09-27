@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { formatNumber } from "../utils/format";
 import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 type StreamData = {
   date: string;
@@ -22,9 +23,17 @@ type Props = {
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
+  const { theme } = useTheme();
+
   if (active && payload?.length) {
     return (
-      <div className="bg-white dark:bg-gray-700 p-2 rounded shadow text-sm text-gray-900 dark:text-gray-100">
+      <div
+        className={`p-2 rounded shadow text-sm ${
+          theme === "light"
+            ? "bg-white text-gray-900"
+            : "bg-gray-700 text-gray-100"
+        }`}
+      >
         <div className="font-semibold">{label}</div>
         <div>Toplam Dinleme: {formatNumber(payload[0].value)}</div>
       </div>
@@ -34,6 +43,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
+  const { theme } = useTheme();
+
   if (!data || data.length === 0) {
     return (
       <div className="text-gray-500 dark:text-gray-400">
@@ -43,7 +54,13 @@ export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
   }
 
   return (
-    <div className="w-full h-64 p-4 rounded-xl shadow-md bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-700">
+    <div
+      className={`w-full h-64 p-4 rounded-xl shadow-md transition-colors ${
+        theme === "light"
+          ? "bg-gradient-to-br from-white to-gray-100"
+          : "bg-gradient-to-br from-gray-800 to-gray-700"
+      }`}
+    >
       <ResponsiveContainer>
         <LineChart data={data}>
           <defs>
@@ -52,9 +69,18 @@ export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
               <stop offset="100%" stopColor="#818cf8" stopOpacity={0.2} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="date" stroke="#4b5563" className="dark:text-gray-200" />
-          <YAxis tickFormatter={formatNumber} stroke="#4b5563" className="dark:text-gray-200" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={theme === "light" ? "#e5e7eb" : "#374151"}
+          />
+          <XAxis
+            dataKey="date"
+            stroke={theme === "light" ? "#4b5563" : "#d1d5db"}
+          />
+          <YAxis
+            tickFormatter={formatNumber}
+            stroke={theme === "light" ? "#4b5563" : "#d1d5db"}
+          />
           <Tooltip content={<CustomTooltip />} />
 
           {/* Animated line */}
@@ -63,8 +89,13 @@ export const StreamHistoryChart: React.FC<Props> = ({ data }) => {
             dataKey="streams"
             stroke="url(#lineGradient)"
             strokeWidth={3}
-            dot={{ r: 3, strokeWidth: 2, stroke: "#4f46e5", fill: "#4f46e5" }}
-            isAnimationActive={false} // Disable default Recharts animation
+            dot={{
+              r: 3,
+              strokeWidth: 2,
+              stroke: "#4f46e5",
+              fill: "#4f46e5",
+            }}
+            isAnimationActive={false}
             // @ts-ignore
             shape={(props: any) => {
               const { points, ...rest } = props;

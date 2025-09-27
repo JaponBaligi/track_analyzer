@@ -12,7 +12,6 @@ from pathlib import Path
 env_path = Path(__file__).parent.parent / "config" / ".env"
 load_dotenv(dotenv_path=env_path)
 logger = get_logger(__name__)
-# Veritabanı migration/kolon kontrolleri için bir kez aç-kapat
 storage = TrackStorage()
 storage.close()
 
@@ -21,16 +20,14 @@ app = FastAPI(
     version="1.1.0"
 )
 
-# CORS (gerekirse prod domain'inle sınırla)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # prod'da sabitle
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Ana API router
 app.include_router(api_router, prefix="/api")
 @app.get("/")
 def root():

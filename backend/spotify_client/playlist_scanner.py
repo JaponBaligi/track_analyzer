@@ -3,6 +3,7 @@
 from spotify_client.client import get_spotify_client
 from utils.logger import get_logger
 from spotify_client.track import get_track_info
+from spotify_client.playable_scanner import get_tracks_by_ids, _track_obj_to_storage_format
 from db.track_storage import TrackStorage
 from db.flagged_artists import get_flagged_names_set
 
@@ -108,6 +109,8 @@ def scan_playlist_for_unplayable_tracks(
 
             if not items:
                 break
+            page_unplayable_ids = []
+            playlist_meta_by_tid = {}
 
             for item in items:
                 track = item.get("track")
@@ -121,11 +124,9 @@ def scan_playlist_for_unplayable_tracks(
                     album_images = track.get("album", {}).get("images", [])
                     image_url = album_images[0]["url"] if album_images else None
 
-                    # Artist ismini al
                     artists = track.get("artists", [])
                     artist_name = artists[0]["name"] if artists else None
 
-                    # Flagged kontrolü
                     if artist_name in flagged:
                         logger.info(f"[SKIP] Flagged artist bulundu: {artist_name} (playlist={playlist_id})")
                         continue
@@ -134,29 +135,78 @@ def scan_playlist_for_unplayable_tracks(
                         logger.warning(f"[SKIP] Track ID veya isim eksik: playlist={playlist_id}")
                         continue
 
-                    # Spotify'dan tam track bilgilerini çek
-                    track_info = get_track_info(track_id)
-                    if track_info:
-                        track_info["playlist_id"] = playlist_id
-                        track_info["image_url"] = image_url
-                        track_info["artist_name"] = artist_name
+                    page_unplayable_ids.append(track_id)
+                    playlist_meta_by_tid[track_id] = {
+                        "image_url": image_url,
+                        "artist_name": artist_name
+                    }
+            if not page_unplayable_ids:
+                offset += limit
+                if offset >= total:
+                    break
+                continue
+            enriched = []
+            try:
+                enriched = get_tracks_by_ids(sp, page_unplayable_ids)
+            except Exception as e:
+                logger.exception("get_tracks_by_ids hata verdi: %s", e)
 
-                        # Veritabanına kaydet
-                        storage = TrackStorage()
-                        if storage.save_unplayable_track_if_new(track_info, owner=owner):
-                            album_name = track_info.get("album", {}).get("name", "Single")
+            enriched_map = {t.get("id"): t for t in enriched if t and t.get("id")}
 
+            storage = TrackStorage()
+            try:
+                for tid in page_unplayable_ids:
+                    t_obj = enriched_map.get(tid)
+                    td = {}
+
+                    if t_obj:
+                        td = _track_obj_to_storage_format(t_obj)
+                    else:
+                        try:
+                            single = get_track_info(tid)
+                        except Exception as e:
+                            logger.exception("get_track_info hata: %s (track_id=%s)", e, tid)
+                            single = None
+                        if single:
+                            td = _track_obj_to_storage_format(single)
+                        else:
+                            logger.warning(f"[SKIP] Track bilgisi alınamadı fallback: {tid}")
+                            continue
+                    if not td:
+                        logger.warning(f"[SKIP] Track normalize edilemedi: {tid}")
+                        continue
+                    pm = playlist_meta_by_tid.get(tid, {})
+                    if pm.get("image_url"):
+                        td["image_url"] = pm.get("image_url")
+                    if pm.get("artist_name"):
+                        td.setdefault("artist_names", td.get("artist_names") or [])
+                        if pm.get("artist_name") not in td["artist_names"]:
+                            td["artist_names"].insert(0, pm.get("artist_name"))
+
+                    td["playlist_id"] = playlist_id
+                    if owner:
+                        td["owner"] = owner
+                    td["is_playable"] = False
+
+                    # Kaydet
+                    try:
+                        saved = storage.save_unplayable_track_if_new(td, owner=owner)
+                        if saved:
                             bad_tracks.append({
-                                "track_id": track_info.get("id"),
-                                "track_name": track_info.get("name"),
-                                "artist_name": artist_name,
+                                "track_id": td.get("id"),
+                                "track_name": td.get("name"),
+                                "artist_name": pm.get("artist_name"),
                                 "playlist_id": playlist_id,
-                                "image_url": image_url,
-                                "album_name": album_name,
-                                "popularity": track_info.get("popularity", "Bilinmiyor"),
-                                "duration_ms": track_info.get("duration_ms")
+                                "image_url": td.get("image_url"),
+                                "album_name": td.get("album_name"),
+                                "popularity": td.get("popularity", "Bilinmiyor"),
+                                "duration_ms": td.get("duration_ms"),
+                                "upc": td.get("upc")
                             })
-                        storage.close()
+                    except Exception:
+                        logger.exception("Unplayable track kaydedilemedi: %s", td.get("id"))
+            finally:
+                storage.close()
 
             offset += limit
             if offset >= total:

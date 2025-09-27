@@ -7,6 +7,7 @@ from spotify_client.playlist_scanner import (
 )
 from spotify_client.artist_utils import get_artist_id
 from utils.logger import get_logger
+from spotify_client.playable_scanner import scan_artist_and_persist_tracks
 
 logger = get_logger(__name__)
 
@@ -89,3 +90,13 @@ def pseudo_recursive_scan(
     except Exception as e:
         logger.exception(f"{artist_name} için beklenmeyen hata.")
         return {"status": "error", "artist": artist_name, "reason": str(e)}
+    
+def scan_artist_playable_and_save(artist_identifier: str, owner: str | None = None):
+    try:
+        logger.info("Artist playable taraması başlıyor: %s", artist_identifier)
+        result = scan_artist_and_persist_tracks(artist_identifier, owner=owner, market=market)
+        logger.info("Artist playable taraması tamamlandı: %s -> %s", artist_identifier, result)
+        return result
+    except Exception as e:
+        logger.exception("scan_artist_playable_and_save hata: %s", e)
+        return {"status": "error", "reason": str(e)}

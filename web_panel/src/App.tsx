@@ -7,7 +7,8 @@ import Login from "./pages/Login";
 import Database from "./pages/Database";
 import Guard from "./components/Guard";
 import FlaggedArtists from "./pages/FlaggedArtists";
-import IsrcLookup from "./pages/IsrcLookup"
+import IsrcLookup from "./pages/IsrcLookup";
+import ArtistScanner from "./pages/ArtistScanner"; // <- yeni import
 
 function App() {
   return (
@@ -49,7 +50,7 @@ function App() {
         }
       />
 
-            <Route
+      <Route
         path="/isrc-lookup"
         element={
           <Guard>
@@ -59,12 +60,25 @@ function App() {
           </Guard>
         }
       />
-        <Route
+
+      <Route
         path="/flagged-artists"
         element={
           <Guard>
             <Layout>
               <FlaggedArtists />
+            </Layout>
+          </Guard>
+        }
+      />
+
+      {/* Yeni: Artist Scanner sayfası */}
+      <Route
+        path="/artist-scanner"
+        element={
+          <Guard>
+            <Layout>
+              <ArtistScanner />
             </Layout>
           </Guard>
         }

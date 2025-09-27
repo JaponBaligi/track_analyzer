@@ -31,6 +31,9 @@ export interface Track {
   is_playable: boolean;
   spotify_url: string;
   image_url?: string | null;
+  added_at?: Date | null;
+  isrc?: string;
+  upc?: string;
 }
 
 export interface TrackEvaluation {

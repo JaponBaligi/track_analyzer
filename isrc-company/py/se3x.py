@@ -1,3 +1,5 @@
+# isrc-company/py/se3x.py
+
 from flask import Flask, request, jsonify, render_template
 import base62
 import requests
@@ -62,7 +64,7 @@ def get_track_details(track_id: str):
         "accept-language": "tr",
         "app-platform": "WebPlayer",
         "authorization": auth_token,
-        "client-token": "AAAAwKf027OjS/J2/V+h7MqG8Usltweu1SaIV1gY6RlP/bJcT0nVHg0J8Tdc05ySxe9/i+EQrsJ4SS4BH5UC2AoX3S/VFsckIpB6vUUUIJEOZxE6TNnFyhuaUlV+QlgV0hNpFeCgj2cwbgB062ZMmBgoZdz233RBrSQliQICettSgSIIGmMqve4z70bAje4QNRJaFFhiC/25OpxwjnM8Cwtkxg4Yd/l+qsVaDzqnv9zHPB7HZ/Wab7eJNTQCpwzoKDXDVwbe389cXrSmg7KeCIbUR4Ooyvgeg4S7jNBlwNLa+DzAs80uYmG+FkzxEzA35cgprkItoT+1xhLKd9Zok90M3thy",
+        "client-token": "AABZjGsF0fOrLDeRgmezGEY95ipJ043vkZjRpUcGVLVEThBoOxqZxZ/O6IAKQ77VogRZK9bhDOD1iFjEj7ymfPDBMDR0PvpT1LinD8phm7A0HOWiMjkvzTYxz0G0oGTYoeHQss4HCsj1a++oQW6pRhrvGoC2W3saFXv01W3dpJIgWs2+yh8yoecxQmmY52LXRaDJT80ekxWo9nAV0hGVBHXh3UV1yjcKjMH1vk+pXyjsZ/Sxw9t2ne2gAuBd8oKSIDCoHEDiAsPqTRkpMSaagY226N8shynl425ldN7prWfqLG+xAN9e+YgOpvhkLnW9ZbH8Ox8M/pn4c7It1Fm3hz4RvxB3iUQ\u003d",
         "referer": "https://open.spotify.com/",
     }
     url = f"https://spclient.wg.spotify.com/metadata/4/track/{gid}?market=from_token"

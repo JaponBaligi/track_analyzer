@@ -30,6 +30,7 @@ def get_track_popularity(track_id: str) -> int | None:
 def get_track_info(track_id: str) -> dict | None:
     """
     Belirtilen track ID için tam bilgileri döner.
+    UPC hem track hem album external_ids’den alınır.
     """
     try:
         logger.debug(f"Track bilgileri sorgulanıyor: {track_id}")
@@ -39,17 +40,24 @@ def get_track_info(track_id: str) -> dict | None:
             logger.warning(f"Track bulunamadı: {track_id}")
             return None
 
+        album = track.get("album") or {}
+        track_ext_ids = track.get("external_ids") or {}
+        album_ext_ids = album.get("external_ids") or {}
+
+        upc = track_ext_ids.get("upc") or album_ext_ids.get("upc")
+
         return {
-            "id": track["id"],
-            "name": track["name"],
-            "artist_names": [artist["name"] for artist in track["artists"]],
-            "album_name": track["album"]["name"],
-            "duration_ms": track["duration_ms"],
+            "id": track.get("id"),
+            "name": track.get("name"),
+            "artist_names": [artist.get("name") for artist in track.get("artists", [])],
+            "album_name": album.get("name"),
+            "duration_ms": track.get("duration_ms"),
             "popularity": track.get("popularity"),
             "is_playable": track.get("is_playable", True),
-            "spotify_url": track["external_urls"]["spotify"],
-            "image_url": track["album"]["images"][0]["url"] if track["album"]["images"] else None,
-            "isrc": track.get("external_ids", {}).get("isrc")
+            "spotify_url": (track.get("external_urls") or {}).get("spotify"),
+            "image_url": (album.get("images") or [None])[0] and (album.get("images") or [None])[0].get("url"),
+            "isrc": track_ext_ids.get("isrc"),
+            "upc": upc
         }
 
     except Exception as e:

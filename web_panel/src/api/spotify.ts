@@ -59,3 +59,24 @@ export const updateAndSaveStreamSeries = async (trackId: string) => {
   });
   return data;
 };
+
+// === Playable scan (artist'in tüm parçalarını tarar ve unplayable'ları DB'ye kaydeder)
+export const scanArtistPlayable = async (
+  artistIdentifier: string,
+  owner: string | null = null,
+  market: string | null = null
+) => {
+  const body: Record<string, any> = { artist_identifier: artistIdentifier };
+  if (owner) body.owner = owner;
+  if (market) body.market = market;
+
+  const { data } = await axios.post("/playable/artists/scan", body);
+  return data;
+};
+
+export const getPlayableTracksByOwner = async (): Promise<Track[]> => {
+  const { data } = await axios.get("/playable/result");
+  return Array.isArray(data) ? data : [];
+};
+
+

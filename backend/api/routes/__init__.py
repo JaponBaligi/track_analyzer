@@ -8,6 +8,7 @@ from .streams import router as streams_router
 from .auth import router as auth_router
 from .db_view import router as db_router
 from .flagged_artists import router as flagged_router
+from .playable_scan import router as playable_router
 
 router = APIRouter()
 
@@ -30,5 +31,7 @@ router.include_router(db_router, prefix="/db", tags=["db"])
 router.include_router(streams_router, prefix="", tags=["streams"])
 
 # Flagged Artist routes
-# Will expose paths like /api/flagged-artists when the main app mounts this router at /api
 router.include_router(flagged_router, prefix="", tags=["Flagged Artists"])
+
+# Playable Track Routes
+router.include_router(playable_router)

@@ -6,7 +6,7 @@ import { Track } from "../types";
 import { evaluateTrack } from "../api/spotify";
 import { formatDuration, formatNumber, formatImageUrl } from "../utils/format";
 import { StreamHistoryChart } from "./StreamHistoryChart";
-import { motion, AnimatePresence } from "framer-motion"; // <-- Import framer-motion
+import { motion, AnimatePresence } from "framer-motion";
 
 type TrackListProps = {
   tracks: Track[];
@@ -68,7 +68,6 @@ const TrackList: React.FC<TrackListProps> = ({ tracks, className, region }) => {
     }
   };
 
-  // Inline TrackCard with animation
   const TrackCard: React.FC<{ track: Track; index: number }> = ({ track, index }) => {
     const isLoading = loadingTrackIds.includes(track.track_id);
     const isError = errorTrackIds.includes(track.track_id);
@@ -92,7 +91,7 @@ const TrackList: React.FC<TrackListProps> = ({ tracks, className, region }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.5, delay: index * 0.1 }} // <-- stagger by index
+        transition={{ duration: 0.5, delay: index * 0.1 }}
         whileHover={{ scale: 1.02 }}
         className={cn(
           "flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border",

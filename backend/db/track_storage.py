@@ -42,10 +42,30 @@ class TrackStorage:
                 playlist_id TEXT,
                 added_at TEXT,
                 owner TEXT,
-                isrc TEXT
+                isrc TEXT,
+                upc TEXT
             )
         """)
-
+        # playable_tracks
+        self.c.execute("""
+            CREATE TABLE IF NOT EXISTS playable_tracks (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                artist_names TEXT,
+                album_name TEXT,
+                duration_ms INTEGER,
+                popularity INTEGER,
+                is_playable INTEGER,
+                spotify_url TEXT,
+                image_url TEXT,
+                playlist_id TEXT,
+                added_at TEXT,
+                owner TEXT,
+                isrc TEXT,
+                upc TEXT
+            )
+        """)
+        
         # track_streams: artık owner ile primary key olacak
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS track_streams (
@@ -71,10 +91,20 @@ class TrackStorage:
         # Migration: owner kolonu yoksa ekle
         if not self._column_exists("unplayable_tracks", "owner"):
             self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN owner TEXT")
+        if not self._column_exists("playable_tracks", "owner"):
+            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN owner TEXT")
 
         # Migration: isrc kolonu yoksa ekle
         if not self._column_exists("unplayable_tracks", "isrc"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN isrc TEXT")    
+            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN isrc TEXT")
+        if not self._column_exists("playable_tracks", "isrc"):
+            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN isrc TEXT")
+
+        # Migration: upc kolonu yoksa ekle
+        if not self._column_exists("unplayable_tracks", "upc"):
+            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN upc TEXT")
+        if not self._column_exists("playable_tracks", "upc"):
+            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN upc TEXT")
 
         self.conn.commit()
 
@@ -91,12 +121,11 @@ class TrackStorage:
             artist_names = track_data.get("artist_names")
             if isinstance(artist_names, list):
                 artist_names = json.dumps(artist_names, ensure_ascii=False)
-
             self.c.execute("""
                 INSERT INTO unplayable_tracks (
                     id, name, artist_names, album_name, duration_ms, popularity,
-                    is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name=excluded.name,
                     artist_names=excluded.artist_names,
@@ -109,7 +138,8 @@ class TrackStorage:
                     playlist_id=excluded.playlist_id,
                     added_at=excluded.added_at,
                     owner=COALESCE(excluded.owner, owner),
-                    isrc=excluded.isrc
+                    isrc=excluded.isrc,
+                    upc=excluded.upc
             """, (
                 track_data.get("id"),
                 track_data.get("name"),
@@ -123,11 +153,77 @@ class TrackStorage:
                 track_data.get("playlist_id"),
                 track_data.get("added_at"),
                 owner,
-                track_data.get("isrc")
+                track_data.get("isrc"),
+                track_data.get("upc")
             ))
             self.conn.commit()
         except Exception as e:
             logger.exception("save_unplayable_track hata: %s", e)
+        
+    def save_playable_track(self, track_data: dict, owner: Optional[str] = None):
+        try:
+            artist_names = track_data.get("artist_names")
+            if isinstance(artist_names, list):
+                artist_names = json.dumps(artist_names, ensure_ascii=False)
+            self.c.execute("""
+                INSERT INTO playable_tracks (
+                    id, name, artist_names, album_name, duration_ms, popularity,
+                    is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name,
+                    artist_names=excluded.artist_names,
+                    album_name=excluded.album_name,
+                    duration_ms=excluded.duration_ms,
+                    popularity=excluded.popularity,
+                    is_playable=excluded.is_playable,
+                    spotify_url=excluded.spotify_url,
+                    image_url=excluded.image_url,
+                    playlist_id=excluded.playlist_id,
+                    added_at=excluded.added_at,
+                    owner=COALESCE(excluded.owner, owner),
+                    isrc=excluded.isrc,
+                    upc=excluded.upc
+            """, (
+                track_data.get("id"),
+                track_data.get("name"),
+                artist_names,
+                track_data.get("album_name"),
+                track_data.get("duration_ms"),
+                track_data.get("popularity"),
+                int(track_data.get("is_playable", 1)),
+                track_data.get("spotify_url"),
+                track_data.get("image_url"),
+                track_data.get("playlist_id"),
+                track_data.get("added_at"),
+                owner,
+                track_data.get("isrc"),
+                track_data.get("upc") 
+            ))
+            self.conn.commit()
+        except Exception as e:
+            logger.exception("save_playable_track hata: %s", e)
+
+    def save_playable_track_if_new(self, track_data: dict, owner: Optional[str] = None) -> bool:
+        try:
+            track_id = track_data.get("id")
+            if not track_id:
+                return False
+
+            self.c.execute(
+                "SELECT 1 FROM playable_tracks WHERE id = ? AND (owner = ? OR owner IS NULL)",
+                (track_id, owner)
+            )
+            exists = self.c.fetchone()
+            if exists:
+                return False
+
+            self.save_playable_track(track_data, owner)
+            return True
+        except Exception as e:
+            logger.exception("save_playable_track_if_new hata: %s", e)
+            return False
+
 
     def save_track_stream_data(self, track_id: str, historical_data: dict, owner: str):
         """
@@ -220,7 +316,7 @@ class TrackStorage:
             if owner:
                 self.c.execute("""
                     SELECT id, name, artist_names, album_name, duration_ms, popularity,
-                           is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
+                        is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
                     FROM unplayable_tracks
                     WHERE (owner IS NULL OR owner = ?)
                     ORDER BY added_at DESC
@@ -229,7 +325,7 @@ class TrackStorage:
             else:
                 self.c.execute("""
                     SELECT id, name, artist_names, album_name, duration_ms, popularity,
-                           is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc
+                        is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
                     FROM unplayable_tracks
                     ORDER BY added_at DESC
                     LIMIT ?
@@ -245,11 +341,45 @@ class TrackStorage:
             logger.exception("get_unplayable_tracks hata: %s", e)
             return []
 
+    def get_playable_tracks(self, owner: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
+        """
+        owner verilirse sadece owner'a ait playable trackleri döner.
+        """
+        try:
+            if owner:
+                self.c.execute("""
+                    SELECT id, name, artist_names, album_name, duration_ms, popularity,
+                        is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
+                    FROM playable_tracks
+                    WHERE owner = ? OR owner IS NULL
+                    ORDER BY added_at DESC
+                    LIMIT ?
+                """, (owner, limit))
+            else:
+                self.c.execute("""
+                    SELECT id, name, artist_names, album_name, duration_ms, popularity,
+                        is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc
+                    FROM playable_tracks
+                    ORDER BY added_at DESC
+                    LIMIT ?
+                """, (limit,))
+            rows = self.c.fetchall()
+            result = []
+            for row in rows:
+                d = self._row_to_dict(self.c, row)
+                d["artist_names"] = json.loads(d["artist_names"]) if d["artist_names"] else []
+                result.append(d)
+            return result
+        except Exception as e:
+            logger.exception("get_playable_tracks hata: %s", e)
+            return []
+
+
     def get_priority_tracks(self, owner: str, limit: int = 200) -> List[Dict[str, Any]]:
         try:
             self.c.execute("""
                 SELECT p.track_id, p.owner, p.average, p.created_at,
-                       u.name, u.artist_names, u.album_name, u.spotify_url, u.image_url
+                    u.name, u.artist_names, u.album_name, u.spotify_url, u.image_url, u.upc
                 FROM priority_tracks p
                 LEFT JOIN unplayable_tracks u ON u.id = p.track_id
                 WHERE p.owner = ?
@@ -270,6 +400,7 @@ class TrackStorage:
         except Exception as e:
             logger.exception("get_priority_tracks hata: %s", e)
             return []
+
 
     def get_track_historical(self, track_id: str, owner: str) -> list[dict]:
         """

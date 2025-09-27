@@ -26,6 +26,7 @@ interface DbTrack {
   track_url?: string;
   playlist_id?: string;
   isrc?: string;
+  upc?: string;
 }
 
 type StreamPoint = { date: string; streams: number };
@@ -89,17 +90,19 @@ const TrackListItem: React.FC<TrackListItemProps> = ({ track, selected, checked,
       />
       <button
         onClick={() => onSelect(tid)}
-        className={`w-full text-left px-2 py-3 hover:bg-gray-600 ${selected ? "bg-gray-800" : ""}`}
+        className={`w-full text-left px-2 py-3 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors ${
+          selected ? "bg-gray-200 dark:bg-gray-700" : "bg-gray-50 dark:bg-gray-800"
+        }`}
       >
         <div className="flex items-center gap-3">
           {img ? (
             <img src={img} alt={track.name} className="w-10 h-10 rounded object-cover" />
           ) : (
-            <div className="w-10 h-10 rounded bg-gray-200" />
+            <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-600" />
           )}
           <div className="min-w-0">
-            <div className="truncate font-medium">{track.name}</div>
-            <div className="truncate text-xs text-white-500">
+            <div className="truncate font-medium text-gray-900 dark:text-gray-100">{track.name}</div>
+            <div className="truncate text-xs text-gray-600 dark:text-gray-400">
               {getTrackArtist(track) + (getTrackAlbum(track) ? ` • ${getTrackAlbum(track)}` : "")}
             </div>
           </div>
@@ -123,25 +126,30 @@ const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, s
   const rangeDelta = series.length > 1 ? series[series.length - 1].streams - series[0].streams : null;
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
       <CardContent className="space-y-4">
-        <div className="flex flex-col md:flex-row justify-between flex-wrap items-center gap-4 p-4 rounded-lg shadow-md">
+        <div className="flex flex-col md:flex-row justify-between flex-wrap items-center gap-4 p-4 rounded-lg shadow-md bg-gray-50 dark:bg-gray-700">
           {/* Track Info */}
-          <div className="text-sm text-black-300 flex flex-wrap gap-4">
+          <div className="text-sm text-gray-900 dark:text-gray-100 flex flex-wrap gap-4">
             <span>
-              Seçili Parça ID: <span className="font-mono text-black-200">{selectedTrackId}</span>
+              Seçili Parça ID: <span className="font-mono">{selectedTrackId}</span>
             </span>
             {track.isrc && (
               <span>
-                ISRC: <span className="font-mono text-black-100">{track.isrc}</span>
+                ISRC: <span className="font-mono">{track.isrc}</span>
+              </span>
+            )}
+            {track.upc && (
+              <span>
+                UPC: <span className="font-mono">{track.upc}</span>
               </span>
             )}
           </div>
 
           {/* Spotify URI */}
           {track?.spotify_url && (
-            <div className="text-sm text-black-300">
-              <span className="text-black-100">URI: </span>
+            <div className="text-sm text-gray-900 dark:text-gray-100">
+              URI:{" "}
               <a
                 href={`spotify:track:${selectedTrackId}`}
                 target="_blank"
@@ -167,72 +175,96 @@ const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, s
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="border rounded-lg p-3 text-center">
-            <div className="text-xs text-gray-500">Tarihler Arası Ortalama Stream</div>
+          <div className="border rounded-lg p-3 text-center bg-gray-100 dark:bg-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-300">Tarihler Arası Ortalama Stream</div>
             <div className="text-lg font-semibold">{rangeAvg != null ? formatNumber(rangeAvg) : "—"}</div>
           </div>
-          <div className="border rounded-lg p-3 text-center">
-            <div className="text-xs text-gray-500">Aralık Değişim (Son - İlk)</div>
+          <div className="border rounded-lg p-3 text-center bg-gray-100 dark:bg-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-300">Aralık Değişim (Son - İlk)</div>
             <div className="text-lg font-semibold">{rangeDelta != null ? formatNumber(rangeDelta) : "—"}</div>
           </div>
-          <div className="border rounded-lg p-3 text-center">
-            <div className="text-xs text-gray-500">Backend Günlük Ortalama</div>
-            <div className="text-lg font-semibold">
-              {streamState?.dailyAvg != null ? formatNumber(streamState.dailyAvg) : "—"}
-            </div>
+          <div className="border rounded-lg p-3 text-center bg-gray-100 dark:bg-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-300">Backend Günlük Ortalama</div>
+            <div className="text-lg font-semibold">{streamState?.dailyAvg != null ? formatNumber(streamState.dailyAvg) : "—"}</div>
           </div>
         </div>
 
         <div className="w-full h-80">
-          {streamState?.loading && <div className="h-full flex items-center justify-center text-gray-500">Yükleniyor…</div>}
-          {streamState?.error && <div className="h-full flex items-center justify-center text-red-600 text-sm">{streamState.error}</div>}
+          {streamState?.loading && <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">Yükleniyor…</div>}
+          {streamState?.error && <div className="h-full flex items-center justify-center text-red-600 dark:text-red-400 text-sm">{streamState.error}</div>}
           {series.length > 1 && (
             <ResponsiveContainer>
               <LineChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis tickFormatter={formatNumber} />
-                <Tooltip formatter={(value: any) => formatNumber(value as number)} labelFormatter={(label) => `Tarih: ${label}`} />
-                <Line type="monotone" dataKey="streams" dot />
+                <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" />
+                <XAxis dataKey="date" stroke="#9CA3AF" />
+                <YAxis tickFormatter={formatNumber} stroke="#9CA3AF" />
+                <Tooltip
+                  formatter={(value: any) => formatNumber(value as number)}
+                  labelFormatter={(label) => `Tarih: ${label}`}
+                  contentStyle={{
+                    backgroundColor: document.documentElement.classList.contains("dark") ? "#1f2937" : "#ffffff",
+                    border: "1px solid",
+                    borderColor: document.documentElement.classList.contains("dark") ? "#374151" : "#d1d5db",
+                    color: document.documentElement.classList.contains("dark") ? "#f9fafb" : "#111827",
+                  }}
+                  labelStyle={{
+                    color: document.documentElement.classList.contains("dark") ? "#f9fafb" : "#111827",
+                  }}
+                />
+                <Line type="monotone" dataKey="streams" dot stroke="#3B82F6" />
               </LineChart>
             </ResponsiveContainer>
+
           )}
           {streamState?.data && series.length <= 1 && !streamState?.loading && (
-            <div className="h-full flex items-center justify-center text-gray-500 text-sm">Grafik için yeterli veri yok.</div>
+            <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm">Grafik için yeterli veri yok.</div>
           )}
         </div>
-
-        <div className="mt-4 border rounded-lg p-4 bg-gray-50 shadow-sm space-y-2">
-          <div className="flex items-center gap-3">
-            {getTrackImage(track) && <img src={getTrackImage(track)} alt="Cover" className="w-16 h-16 rounded object-cover" />}
-            <div className="space-y-1">
-              <div className="font-semibold text-lg">{track.name}</div>
-              <div className="text-sm text-gray-600">{track.artist_names || "Bilinmiyor"} • {getTrackAlbum(track) || "Single"}</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-gray-700 mt-2">
+      <div className="mt-4 border rounded-lg p-4 bg-gray-50 dark:bg-gray-700 shadow-sm space-y-2">
+  <div className="flex items-center gap-3">
+    {getTrackImage(track) && <img src={getTrackImage(track)} alt="Cover" className="w-16 h-16 rounded object-cover" />}
+    <div className="space-y-1">
+      <div className="font-semibold text-lg text-gray-900 dark:text-gray-100">{track.name}</div>
+      <div className="text-sm text-gray-600 dark:text-gray-300">{track.artist_names || "Bilinmiyor"} • {getTrackAlbum(track) || "Single"}</div>
+    </div>
+  </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-gray-700 dark:text-gray-300 mt-2">
             <div>
               <span className="font-medium">Süre:</span>{" "}
-              {track.duration_ms ? `${Math.floor(track.duration_ms / 60000)}:${String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, "0")}` : "—"}
+              {track.duration_ms
+                ? `${Math.floor(track.duration_ms / 60000)}:${String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, "0")}`
+                : "—"}
             </div>
             <div>
               <span className="font-medium">Popülarite:</span> {track.popularity ?? "—"}
             </div>
             <div>
-              <a href={`https://open.spotify.com/track/${getTrackId(track)}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+              <a
+                href={`https://open.spotify.com/track/${getTrackId(track)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
                 Spotify Link
               </a>
             </div>
             {track.playlist_id && (
               <div>
-                <a href={`https://open.spotify.com/playlist/${track.playlist_id}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                <a
+                  href={`https://open.spotify.com/playlist/${track.playlist_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
                   Playlist Link
                 </a>
               </div>
             )}
             <div className="sm:col-span-2">
-              <button onClick={() => track.id && handleDelete(track.id)} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700">
+              <button
+                onClick={() => track.id && handleDelete(track.id)}
+                className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
+              >
                 Sil
               </button>
             </div>
@@ -282,7 +314,7 @@ export default function Database() {
     if (!selectedTrackId && tracks.length) {
       setSelectedTrackId(getTrackId(tracks[0]));
     }
-  }, [tracks,selectedTrackId]);
+  }, [tracks, selectedTrackId]);
 
   // Fetch streams
   const fetchStreams = async (trackId: string, forceUpdateAndSave = false) => {
@@ -353,42 +385,58 @@ export default function Database() {
   }, [selectedTrackId, streams, startDate, endDate]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-white text-black min-h-screen dark:bg-gray-900 dark:text-gray-100">
       <div className="flex items-center gap-4">
         <h1 className="text-2xl font-semibold">Track Database</h1>
-        <button onClick={() => navigate("/flagged-artists")} className="px-3 py-1.5 rounded bg-gray-1000 hover:bg-gray-700">
+        <button onClick={() => navigate("/flagged-artists")} className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black">
           Flagged Artists
         </button>
       </div>
 
       <div className="flex items-end gap-4">
         <div>
-          <label htmlFor="start-date" className="block text-sm text-white-600 mb-1">
+          <label htmlFor="start-date" className="block text-sm text-black mb-1 dark:text-gray-300">
             Başlangıç Tarihi
           </label>
-          <input id="start-date" type="date" className="border rounded px-2 py-1 bg-gray-800 text-white" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <input
+            id="start-date"
+            type="date"
+            className="border rounded px-2 py-1 bg-gray text-black dark:bg-gray-800 dark:text-white"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
         <div>
-          <label htmlFor="end-date" className="block text-sm text-white-600 mb-1">
+          <label htmlFor="end-date" className="block text-sm text-black mb-1 dark:text-gray-300">
             Bitiş Tarihi
           </label>
-          <input id="end-date" type="date" className="border rounded px-2 py-1 bg-gray-800 text-white" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <input
+            id="end-date"
+            type="date"
+            className="border rounded px-2 py-1 bg-gray text-black dark:bg-gray-800 dark:text-white"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Track List */}
-        <motion.div variants={listContainer} initial="hidden" animate="visible" className="lg:col-span-1 border rounded-xl overflow-hidden">
-          <div className="bg-gray-1000 px-4 py-2 font-medium flex justify-between items-center">
+        <motion.div variants={listContainer} initial="hidden" animate="visible" className="lg:col-span-1 border rounded-xl overflow-hidden bg-gray-450 dark:bg-gray-700">
+          <div className="bg-gray-700 dark:bg-gray-600 px-4 py-2 font-medium flex justify-between items-center text-gray-100">
             <span>Parçalar</span>
-            <button onClick={handleBulkDelete} disabled={selectedForDelete.size === 0} className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 text-sm">
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedForDelete.size === 0}
+              className="px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 text-sm"
+            >
               Toplu Sil
             </button>
           </div>
-          <div className="max-h-[70vh] overflow-auto divide-y">
-            {loading && <div className="p-4 text-sm text-white-500">Yükleniyor…</div>}
+          <div className="max-h-[70vh] overflow-auto divide-y divide-gray-700">
+            {loading && <div className="p-4 text-sm text-gray-400">Yükleniyor…</div>}
             {error && <div className="p-4 text-sm text-red-600">{error}</div>}
-            {!loading && !error && tracks.length === 0 && <div className="p-4 text-sm text-white-500">Kayıt yok</div>}
+            {!loading && !error && tracks.length === 0 && <div className="p-4 text-sm text-gray-400">Kayıt yok</div>}
             {tracks.map((t) => (
               <TrackListItem
                 key={getTrackId(t)}
@@ -407,7 +455,7 @@ export default function Database() {
         </motion.div>
 
         {/* Track Detail */}
-        <div className="lg:col-span-2 border rounded-xl p-4 space-y-4 ">
+        <div className="lg:col-span-2 border rounded-xl p-4 space-y-4 bg-gray-700 dark:bg-gray-700">
           {selectedTrackId && selectedTrack ? (
             <TrackDetailCard
               track={selectedTrack}
@@ -417,9 +465,8 @@ export default function Database() {
               handleDelete={handleDelete}
             />
           ) : (
-            <div className="text-white-500">Bir parça seçin.</div>
+            <div className="text-gray-400">Bir parça seçin.</div>
           )}
-
         </div>
       </div>
     </div>

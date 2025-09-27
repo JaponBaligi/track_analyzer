@@ -4,19 +4,18 @@ import React, { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Music2, User, AlertTriangle, Link as LinkIcon, Clock } from "lucide-react";
 import { Playlist, Track } from "../types";
-import { formatDuration } from "../utils/format"; // Süre formatlama yardımcı fonksiyonu (ms => mm:ss)
+import { formatDuration } from "../utils/format";
 import { useAppContext } from "../context/AppContext";
 import { evaluateTrack } from "../api/spotify";
 
 interface PlaylistCardProps {
-  playlist: Playlist & { tracks: Track[] }; // Playlist içinde tracks olacak
+  playlist: Playlist & { tracks: Track[] };
 }
 
 const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
-  const { region } = useAppContext(); // Context'ten seçili bölge bilgisi alınıyor
+  const { region } = useAppContext();
   const badTracks = playlist.tracks?.filter((track) => !track.is_playable) || [];
 
-  // Stream sayısı, loading ve error durumları track_id bazında tutulacak
   const [loadingTrackIds, setLoadingTrackIds] = useState<string[]>([]);
   const [errorTrackIds, setErrorTrackIds] = useState<string[]>([]);
   const [streamCounts, setStreamCounts] = useState<Record<string, number>>({});
@@ -91,18 +90,18 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
                           className="w-12 h-12 rounded-md object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-md bg-gray-300 flex items-center justify-center text-gray-600 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-md bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 flex-shrink-0">
                           N/A
                         </div>
                       )}
 
                       <div className="min-w-0">
-                        <p className="font-semibold truncate max-w-xs">{track.track_name}</p>
-                        <p className="text-xs text-gray-700 truncate max-w-xs">
+                        <p className="font-semibold truncate max-w-xs text-gray-900 dark:text-gray-100">{track.track_name}</p>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-xs">
                           {track.artist_names.join(", ")}
                         </p>
 
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
                           <Clock className="w-3 h-3" />
                           <span>{formatDuration(track.duration_ms)}</span>
 
@@ -110,7 +109,7 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
                             href={track.spotify_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-blue-600 hover:underline ml-4"
+                            className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline ml-4"
                             title="Parçaya Git"
                           >
                             <LinkIcon className="w-4 h-4" /> Parça
@@ -120,18 +119,19 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist }) => {
                             href={`https://open.spotify.com/playlist/${playlist.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-blue-600 hover:underline ml-4"
+                            className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline ml-4"
                             title="Playlist'e Git"
                           >
                             <LinkIcon className="w-4 h-4" /> Playlist
                           </a>
                         </div>
 
-                        <div className="text-xs mt-1">
+                        <div className="text-xs mt-1 text-gray-700 dark:text-gray-300">
                           <strong>Kaldırılan Bölge:</strong> {region}
                         </div>
                       </div>
                     </div>
+
                     {/* Badge & Action */}
                     <div className="flex flex-col items-center space-y-1 min-w-[110px]">
                       <span className="px-2 py-0.5 rounded bg-red-600 dark:bg-red-500 text-white text-xs font-semibold transition-colors">

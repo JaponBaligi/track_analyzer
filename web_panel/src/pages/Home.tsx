@@ -30,10 +30,10 @@ const Home: React.FC = () => {
   };
 
   return (
-    <main className="container mx-auto px-4 py-6 bg-gray-900 text-gray-100 min-h-screen">
+    <main className="container mx-auto px-4 py-6 bg-gray-0 text-gray-100 min-h-screen">
       {/* Page Header */}
       <motion.h1
-        className="text-3xl font-bold mb-6 text-center text-gray-100"
+        className="text-3xl font-bold mb-6 text-center text-black dark:text-white"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: easeOut }}
@@ -98,7 +98,7 @@ const Home: React.FC = () => {
                 key={artist.id}
                 custom={idx}
                 variants={fadeUpVariant}
-                className="border rounded-xl p-4 shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:shadow-lg transition-transform duration-150 cursor-pointer"
+                className="border rounded-xl p-4 shadow-sm bg-gray-800 border-gray-700 hover:shadow-lg transition-transform duration-150 cursor-pointer"
               >
                 <div className="flex items-center space-x-4">
                   {artist.image_url ? (
@@ -114,10 +114,10 @@ const Home: React.FC = () => {
                   )}
                   <div>
                     <p className="text-lg font-medium text-gray-100">{artist.name}</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-400 dark:text-gray-300">
                       {artist.followers.toLocaleString()} takipçi
                     </p>
-                    <p className="text-sm text-gray-400 truncate max-w-xs">
+                    <p className="text-sm text-gray-400 dark:text-gray-300 truncate max-w-xs">
                       {artist.genres.join(", ") || "Tür bilgisi yok"}
                     </p>
                   </div>
@@ -142,7 +142,7 @@ const Home: React.FC = () => {
               .filter((playlist) => (playlist.tracks ?? []).some((track) => !track.is_playable))
               .map((playlist: Playlist, idx: number) => (
                 <motion.div key={playlist.id} custom={idx} variants={fadeUpVariant}>
-                  <PlaylistCard playlist={playlist} />
+                  <PlaylistCard playlist={playlist}/>
                 </motion.div>
               ))}
           </div>
@@ -153,7 +153,7 @@ const Home: React.FC = () => {
       {trackResults.length > 0 && (
         <section aria-label="Parçalar">
           <h2 className="text-2xl font-semibold mb-4 text-gray-100">Parçalar</h2>
-          <TrackList tracks={trackResults as Track[]} />
+          <TrackList tracks={trackResults as Track[]}/>
         </section>
       )}
     </main>

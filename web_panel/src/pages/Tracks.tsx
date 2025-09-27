@@ -1,5 +1,3 @@
-// src/pages/Tracks.tsx
-
 import React from "react";
 import { motion } from "framer-motion";
 import { useAppContext } from "../context/AppContext";
@@ -9,9 +7,9 @@ const Tracks: React.FC = () => {
   const { artist } = useAppContext();
 
   return (
-    <main className="container mx-auto px-4 py-6">
+    <main className="container mx-auto px-4 py-6 bg-gray-100 text-gray-100 min-h-screen">
       <motion.h1
-        className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-gray-100"
+        className="text-2xl font-bold mb-6 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -31,4 +29,3 @@ const Tracks: React.FC = () => {
 };
 
 export default Tracks;
-

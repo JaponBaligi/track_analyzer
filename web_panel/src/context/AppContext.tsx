@@ -1,5 +1,4 @@
 // web_panel/src/context/AppContext.tsx
-
 import React, { createContext, useState, ReactNode, useMemo, useContext } from "react";
 import { Playlist, Artist, Track } from "../types";
 
@@ -27,6 +26,9 @@ export type AppContextType = {
 
   region: string;
   setRegion: (region: string) => void;
+
+  theme: "light" | "dark";
+  toggleTheme: () => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -41,7 +43,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [region, setRegion] = useState<string>("TR"); // Default region set to Turkey
+  const [region, setRegion] = useState<string>("TR"); // Default region
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
   const contextValue = useMemo(
     () => ({
@@ -61,6 +66,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setError,
       region,
       setRegion,
+      theme,
+      toggleTheme,
     }),
     [
       artist,
@@ -71,6 +78,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       loading,
       error,
       region,
+      theme,
     ]
   );
 
@@ -79,9 +87,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useAppContext must be used within an AppProvider");
-  }
+  if (!context) throw new Error("useAppContext must be used within an AppProvider");
   return context;
 };
 

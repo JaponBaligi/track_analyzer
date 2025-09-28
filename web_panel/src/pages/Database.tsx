@@ -391,6 +391,9 @@ export default function Database() {
         <button onClick={() => navigate("/flagged-artists")} className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black">
           Flagged Artists
         </button>
+        <button onClick={() => navigate("/playable-artist")} className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black">
+          Playable Artists
+        </button>  
       </div>
 
       <div className="flex items-end gap-4">

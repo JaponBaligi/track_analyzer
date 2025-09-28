@@ -43,10 +43,8 @@ const UnplayableTracks: React.FC = () => {
   return (
     <div className="px-4 py-2">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Çalınamayan Şarkılar
       </h2>
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
-        <TrackList tracks={tracks} />
       </div>
     </div>
   );

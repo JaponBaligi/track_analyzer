@@ -8,7 +8,8 @@ import Database from "./pages/Database";
 import Guard from "./components/Guard";
 import FlaggedArtists from "./pages/FlaggedArtists";
 import IsrcLookup from "./pages/IsrcLookup";
-import ArtistScanner from "./pages/ArtistScanner"; // <- yeni import
+import ArtistScanner from "./pages/ArtistScanner";
+import PlayableArtists from "./pages/PlayableArtists";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         }
       />
 
+      {/*Track List*/}
       <Route
         path="/tracks"
         element={
@@ -39,6 +41,7 @@ function App() {
         }
       />
 
+      {/*Database sayfası */}
       <Route
         path="/db"
         element={
@@ -50,6 +53,7 @@ function App() {
         }
       />
 
+      {/*ISRC Lookup sayfası */}
       <Route
         path="/isrc-lookup"
         element={
@@ -61,6 +65,7 @@ function App() {
         }
       />
 
+      {/*Artist Flag sayfası */}
       <Route
         path="/flagged-artists"
         element={
@@ -72,13 +77,25 @@ function App() {
         }
       />
 
-      {/* Yeni: Artist Scanner sayfası */}
+      {/*Artist Scanner sayfası */}
       <Route
         path="/artist-scanner"
         element={
           <Guard>
             <Layout>
               <ArtistScanner />
+            </Layout>
+          </Guard>
+        }
+      />
+
+      {/*Artist Scanner sayfası */}
+      <Route
+        path="/playable-artist"
+        element={
+          <Guard>
+            <Layout>
+              <PlayableArtists />
             </Layout>
           </Guard>
         }

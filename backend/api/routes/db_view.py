@@ -73,12 +73,9 @@ def evaluate_and_maybe_promote(
     try:
         hist = storage.get_track_historical(track_id, owner=owner)
         if not hist or not isinstance(hist, list) or len(hist) == 0:
-            # Hiç veri yoksa: Spotify RapidAPI'yi kullanan akışın bu kaydı daha önce populate etmiş olması gerekir.
             raise HTTPException(status_code=404, detail="Bu parça için stream verisi bulunamadı.")
         if len(hist) < 2:
             return {"status": "insufficient", "message": "Veri, ortalaması alınacak kadar fazla bilgi içermiyor"}
-
-        # Günlük artışların ortalaması (negatifler hariç)
         daily = []
         for i in range(1, len(hist)):
             diff = hist[i]["streams"] - hist[i-1]["streams"]

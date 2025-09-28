@@ -24,5 +24,4 @@ def login(body: LoginRequest):
 
 @router.get("/me")
 def me():
-    # Frontend bu ucu kullanmak yerine /api/auth/validate kullanabilir.
     return {"message": "Auth çalışma testi için. /validate veya guard kullanılan uçları tercih et."}

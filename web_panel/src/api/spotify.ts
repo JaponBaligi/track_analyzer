@@ -73,7 +73,7 @@ export const scanArtistPlayable = async (
   const { data } = await axios.post("/playable/artists/scan", body);
   return data;
 };
-
+// === Playable scan sonuçlarını döndürür
 export const getPlayableTracksByOwner = async (): Promise<Track[]> => {
   const { data } = await axios.get("/playable/result");
   return Array.isArray(data) ? data : [];

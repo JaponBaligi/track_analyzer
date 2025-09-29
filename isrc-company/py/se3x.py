@@ -64,7 +64,7 @@ def get_track_details(track_id: str):
         "accept-language": "tr",
         "app-platform": "WebPlayer",
         "authorization": auth_token,
-        "client-token": "AABZjGsF0fOrLDeRgmezGEY95ipJ043vkZjRpUcGVLVEThBoOxqZxZ/O6IAKQ77VogRZK9bhDOD1iFjEj7ymfPDBMDR0PvpT1LinD8phm7A0HOWiMjkvzTYxz0G0oGTYoeHQss4HCsj1a++oQW6pRhrvGoC2W3saFXv01W3dpJIgWs2+yh8yoecxQmmY52LXRaDJT80ekxWo9nAV0hGVBHXh3UV1yjcKjMH1vk+pXyjsZ/Sxw9t2ne2gAuBd8oKSIDCoHEDiAsPqTRkpMSaagY226N8shynl425ldN7prWfqLG+xAN9e+YgOpvhkLnW9ZbH8Ox8M/pn4c7It1Fm3hz4RvxB3iUQ\u003d",
+        "client-token": "AADJvCgjaLmb1gq+eIg+TAIjDX1E/LLmFZ4nZxOH8EB/03TJA/B6UkKPwVutc2QRBnbcCczggEy0/kndqZGtKDJnxv6WJNNSK7e6xM9fZnGC/nB/0dOSIUYBd7oOC5dehYwW70nopP3X01iabXIkzXXZVts3q4DtmwJDSwh88Kww25UvJ/gz/AexVOAlaqV9vJ5x0ppd7LVlEMN38liQAt6uGUzCNyTr67ZZfYmeJKRZhowTyQT7spEvzJpgnT5eyDVs9IdapvagqQNew7THlDxH9CY0OqcSVS1yg1/OLSjG9ejQ2FmtOjuohlE5blngHLJtDto02eMrAHiHWsTu/EiCwzcdCQ\u003d\u003d",
         "referer": "https://open.spotify.com/",
     }
     url = f"https://spclient.wg.spotify.com/metadata/4/track/{gid}?market=from_token"
@@ -145,7 +145,7 @@ def get_licensor():
     })
 
 if __name__ == "__main__":
-    puppeteer_script = os.path.join(BASE_DIR, "token_collector.js")
+    puppeteer_script = os.path.join(BASE_DIR, "..", "backend", "js", "token_collector.js")
     if os.path.exists(puppeteer_script):
         puppeteer_process = subprocess.Popen(["node", puppeteer_script])
         atexit.register(lambda: puppeteer_process.terminate())

@@ -10,7 +10,7 @@ import FlaggedArtists from "./pages/FlaggedArtists";
 import IsrcLookup from "./pages/IsrcLookup";
 import ArtistScanner from "./pages/ArtistScanner";
 import PlayableArtists from "./pages/PlayableArtists";
-
+import Whitelist from "./pages/Whitelist";
 function App() {
   return (
     <Routes>
@@ -84,6 +84,18 @@ function App() {
           <Guard>
             <Layout>
               <ArtistScanner />
+            </Layout>
+          </Guard>
+        }
+      />
+
+      {/*Whitelist sayfası */}
+      <Route
+        path="/whitelist"
+        element={
+          <Guard>
+            <Layout>
+              <Whitelist />
             </Layout>
           </Guard>
         }

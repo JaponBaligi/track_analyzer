@@ -1,6 +1,9 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path');
 const schedule = require('node-schedule');
+
+const tokenPath = path.resolve(__dirname, '..', '..', 'config', 'auth_tokens.txt');
 
 let browser;
 let page;
@@ -18,24 +21,34 @@ async function initializeBrowser() {
     ],
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
   });
-  
 
-  
   page = await browser.newPage();
   await page.setViewport({ width: 1366, height: 768 });
-  
-  // API isteklerini dinleme
+
   await page.setRequestInterception(true);
   page.on('request', interceptRequests);
 }
 
 function interceptRequests(request) {
-  const authHeader = request.headers()['authorization'];
-  if (authHeader && authHeader.startsWith('Bearer')) {
-    fs.writeFileSync('auth_tokens.txt', authHeader);
-    console.log(`[${new Date().toLocaleTimeString()}] Token güncellendi!`);
+  try {
+    const authHeader = request.headers()['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer')) {
+      try {
+        const dir = path.dirname(tokenPath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(tokenPath, authHeader, { encoding: 'utf8' });
+        console.log(`[${new Date().toLocaleTimeString()}] Token güncellendi -> ${authHeader.slice(0, 20)}... (yazıldı: ${tokenPath})`);
+      } catch (err) {
+        console.error('Token yazma hatası:', err);
+      }
+    }
+  } catch (e) {
+    console.error('Intercept error:', e);
+  } finally {
+    try { request.continue(); } catch (e) { console.error('request.continue error:', e); }
   }
-  request.continue();
 }
 
 async function getLatestToken() {
@@ -49,9 +62,8 @@ async function getLatestToken() {
       timeout: 60000
     });
 
-    // Sayfayı her seferinde tazele
     await page.reload({ waitUntil: 'networkidle2' });
-    
+
   } catch (error) {
     console.error('Hata oluştu, tarayıcı yeniden başlatılıyor:', error.message);
     await restartBrowser();
@@ -60,34 +72,28 @@ async function getLatestToken() {
 
 async function restartBrowser() {
   if (browser) {
-    await browser.close();
+    try { await browser.close(); } catch(e) { console.error('close browser error:', e); }
   }
   await initializeBrowser();
 }
 
-// Uygulamayı başlat
 (async () => {
   console.log('Spotify Token Collector başlatılıyor...');
   await initializeBrowser();
-
-  // Her 2 dakikada bir token güncelleme
   const job = schedule.scheduleJob('*/2 * * * *', getLatestToken);
 
-  // Hata durumlarında otomatik restart
   process.on('uncaughtException', async (error) => {
     console.error('Kritik hata:', error);
     await restartBrowser();
   });
 
-  // Graceful shutdown
   process.on('SIGINT', async () => {
     isRunning = false;
     console.log('Uygulama kapatılıyor...');
     job.cancel();
-    await browser.close();
+    try { await browser.close(); } catch(e) { console.error('browser close on SIGINT error:', e); }
     process.exit();
   });
-
-  // İlk çalıştırmayı hemen yap
+  
   await getLatestToken();
 })();

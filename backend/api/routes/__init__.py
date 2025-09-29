@@ -9,6 +9,7 @@ from .auth import router as auth_router
 from .db_view import router as db_router
 from .flagged_artists import router as flagged_router
 from .playable_scan import router as playable_router
+from .lookup import router as lookup
 
 router = APIRouter()
 
@@ -35,3 +36,6 @@ router.include_router(flagged_router, prefix="", tags=["Flagged Artists"])
 
 # Playable Track Routes
 router.include_router(playable_router)
+
+# ISRC Lookup Routes
+router.include_router(lookup, prefix="/lookup", tags=["lookup"])

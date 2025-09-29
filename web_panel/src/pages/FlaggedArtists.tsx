@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // <- ekledik
 import { fetchFlaggedArtists, addFlaggedArtist, deleteFlaggedArtist } from "../api/flaggedArtists";
-import { UserPlusIcon, TrashIcon } from "../components/IconWrappers";
+import { TrashIcon } from "../components/IconWrappers";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FlaggedArtist {
@@ -69,11 +69,30 @@ export default function FlaggedArtistsPage() {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar / Add Artist */}
-      <div className="md:w-1/3 bg-blue-50 dark:bg-gray-800 p-6 shadow-md flex flex-col">
-        <div className="flex items-center gap-2 mb-6">
-          <UserPlusIcon className="text-blue-600 dark:text-blue-400 text-2xl" />
-          <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-300">Flagged Artists</h1>
+      <div className="md:w-2/3 bg-blue-50 dark:bg-gray-800 p-6 shadow-md flex flex-col">
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => navigate("/db")}
+            className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black"
+          >
+            Track Database
+          </button>
+
+          <h1 className="text-2xl font-semibold">Flagged Artists</h1>
+
+          <button
+            onClick={() => navigate("/playable-artist")}
+            className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black"
+          >
+            Playable Artists
+          </button>
+
+          <button
+            onClick={() => navigate("/whitelist")}
+            className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black"
+          >
+            Whitelist
+          </button>
         </div>
 
         <form onSubmit={handleAdd} className="mb-6">
@@ -98,21 +117,12 @@ export default function FlaggedArtistsPage() {
             </button>
           </div>
         </form>
-
-        {/* Database Button */}
-        <button
-          onClick={() => navigate("/db")}
-          className="mb-4 px-4 py-2 rounded bg-green-600 dark:bg-green-500 text-white hover:bg-green-700 dark:hover:bg-green-600 flex items-center justify-center transition-colors"
-        >
-          Database sayfasına dön
-        </button>
-
         {message && <div className="mb-2 text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900 p-2 rounded">{message}</div>}
         {error && <div className="mb-2 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900 p-2 rounded">{error}</div>}
       </div>
 
       {/* Artist List */}
-      <div className="md:w-2/3 p-6">
+      <div className="md:w-1/2 p-6">
         <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Eklenen Flagged Artistler</h2>
         {list.length === 0 ? (
           <div className="text-gray-500 dark:text-gray-400">Henüz flag'lenmiş artist yok.</div>

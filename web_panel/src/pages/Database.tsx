@@ -27,6 +27,8 @@ interface DbTrack {
   playlist_id?: string;
   isrc?: string;
   upc?: string;
+  licensor_name?: string; // lookup sonucu için
+  release_date?: string; // lookup sonucu için
 }
 
 type StreamPoint = { date: string; streams: number };
@@ -39,7 +41,7 @@ interface StreamState {
 }
 
 // --- Helpers ---
-const getTrackId = (t: DbTrack) => (t.track_id || t.id || "").toString();
+const getTrackId = (t: DbTrack | any) => (t?.track_id || t?.id || "").toString();
 const getTrackImage = (t: DbTrack) => t.image_url || t.album_image || undefined;
 const getTrackAlbum = (t: DbTrack) => t.album || t.album_name || undefined;
 const getTrackArtist = (t: DbTrack) =>
@@ -118,12 +120,89 @@ interface TrackDetailCardProps {
   series: StreamPoint[];
   fetchStreams: (id: string, force?: boolean) => void;
   handleDelete: (id: string) => void;
+  onLookupSaved?: (updatedTrack: any) => void; // <-- new callback to update parent DB state
 }
 
-const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, series, fetchStreams, handleDelete }) => {
+const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, series, fetchStreams, handleDelete, onLookupSaved }) => {
   const selectedTrackId = getTrackId(track);
   const rangeAvg = average(toDaily(series));
   const rangeDelta = series.length > 1 ? series[series.length - 1].streams - series[0].streams : null;
+
+  // --- Lookup state ---
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [licensorInfo, setLicensorInfo] = useState<{ licensor_name?: string; release_date?: string } | null>(null);
+
+  // Keep the optional external lookup (same as before) — but the main DB save will not depend on this.
+  const lookupLicensor = async () => {
+    if (!selectedTrackId) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      let data: any = null;
+      const win: any = window as any;
+
+      if (win?.__LOOKUP_SERVICE && typeof win.__LOOKUP_SERVICE.getLicensor === "function") {
+        data = await win.__LOOKUP_SERVICE.getLicensor(selectedTrackId);
+      } else {
+        const base = process.env.REACT_APP_LOOKUP_URL || "";
+        const url = base
+          ? `${base.replace(/\/$/, "")}/get_licensor?track_id=${encodeURIComponent(selectedTrackId)}`
+          : `/get_licensor?track_id=${encodeURIComponent(selectedTrackId)}`;
+
+        const res = await fetch(url, { method: "GET", credentials: "include" });
+        if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
+        data = await res.json();
+      }
+
+      if (data?.error) {
+        setLookupError(data.error || "Lookup error");
+      } else {
+        setLicensorInfo({ licensor_name: data.licensor_name, release_date: data.release_date });
+      }
+    } catch (e: any) {
+      setLookupError(e?.message || "Lookup failed");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  // Save to DB — this mirrors PlayableArtists behavior: post to /lookup/save and use returned track to update UI
+  const saveLookupToDB = async () => {
+    if (!selectedTrackId) return;
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const payload = {
+        track_id: selectedTrackId,
+        licensor_name: licensorInfo?.licensor_name ?? "",
+        release_date: licensorInfo?.release_date ?? "",
+      };
+
+      const res = await axiosInstance.post("/lookup/save", payload);
+
+      if (res?.data?.track) {
+        const updatedTrack = res.data.track;
+        // Update local licensor info with returned data if present
+        setLicensorInfo({ licensor_name: updatedTrack.licensor_name ?? licensorInfo?.licensor_name, release_date: updatedTrack.release_date ?? licensorInfo?.release_date });
+
+        // Notify parent to update its tracks state (so DB list shows the new data)
+        if (typeof onLookupSaved === "function") onLookupSaved(updatedTrack);
+
+        // show a small confirmation (keeps parity with previous UX)
+        alert("Lookup bilgisi DB'ye kaydedildi.");
+      } else if (res?.data?.success) {
+        alert("Lookup isteği işlendi.");
+      } else {
+        setLookupError("DB kaydı başarısız oldu");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setLookupError(e?.response?.data?.detail || e?.message || "DB kaydı sırasında hata");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   return (
     <Card className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
@@ -149,7 +228,7 @@ const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, s
           {/* Spotify URI */}
           {track?.spotify_url && (
             <div className="text-sm text-gray-900 dark:text-gray-100">
-              URI:{" "}
+              URI: {" "}
               <a
                 href={`spotify:track:${selectedTrackId}`}
                 target="_blank"
@@ -260,6 +339,24 @@ const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, s
                 </a>
               </div>
             )}
+
+            {/* Lookup + Delete buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  // Attempt external lookup first (non-blocking), then always call save to DB.
+                  // External lookup will populate licensorInfo which saveLookupToDB will send if present.
+                  await lookupLicensor().catch(() => undefined);
+                  await saveLookupToDB();
+                }}
+                disabled={lookupLoading}
+                className="px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+              >
+                {lookupLoading ? "Aranıyor…" : "Lookup"}
+              </button>
+
+            </div>
+
             <div className="sm:col-span-2">
               <button
                 onClick={() => track.id && handleDelete(track.id)}
@@ -269,6 +366,23 @@ const TrackDetailCard: React.FC<TrackDetailCardProps> = ({ track, streamState, s
               </button>
             </div>
           </div>
+
+          {/* Show lookup results / errors */}
+          {lookupError && <div className="text-sm text-red-500 mt-2">{lookupError}</div>}
+          {(licensorInfo?.licensor_name || licensorInfo?.release_date) && (
+            <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 space-y-1">
+              {licensorInfo?.licensor_name && (
+                <div>
+                  <span className="font-medium">Distributor:</span> {licensorInfo.licensor_name}
+                </div>
+              )}
+              {licensorInfo?.release_date && (
+                <div>
+                  <span className="font-medium">Released:</span> {licensorInfo.release_date}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -285,6 +399,9 @@ export default function Database() {
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [bulkLookupRunning, setBulkLookupRunning] = useState(false);
+  const [bulkLookupProgress, setBulkLookupProgress] = useState<{ current: number; total: number; skipped: number; errors: Array<any> }>({ current: 0, total: 0, skipped: 0, errors: [] });
   const navigate = useNavigate();
 
   // Fetch tracks
@@ -309,12 +426,35 @@ export default function Database() {
     };
   }, []);
 
-  // Auto select first track
+  // Auto select first track when tracks change (same as before)
   useEffect(() => {
     if (!selectedTrackId && tracks.length) {
       setSelectedTrackId(getTrackId(tracks[0]));
     }
   }, [tracks, selectedTrackId]);
+
+  // When search/filter changes, ensure selection stays valid; if not, select first filtered.
+  const filteredTracks = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tracks;
+    return tracks.filter((t) => {
+      const name = (t.name || "").toLowerCase();
+      const artist = (getTrackArtist(t) || "").toLowerCase();
+      const album = (getTrackAlbum(t) || "").toLowerCase();
+      const tid = getTrackId(t).toLowerCase();
+      return name.includes(q) || artist.includes(q) || album.includes(q) || tid.includes(q);
+    });
+  }, [tracks, searchQuery]);
+
+  useEffect(() => {
+    if (!filteredTracks.length) {
+      // If filter yields nothing, keep selection but don't change it. (Optional: clear selection)
+      return;
+    }
+    if (!selectedTrackId || !filteredTracks.some((t) => getTrackId(t) === selectedTrackId)) {
+      setSelectedTrackId(getTrackId(filteredTracks[0]));
+    }
+  }, [filteredTracks, selectedTrackId]);
 
   // Fetch streams
   const fetchStreams = async (trackId: string, forceUpdateAndSave = false) => {
@@ -363,7 +503,7 @@ export default function Database() {
     const ids = Array.from(selectedForDelete);
     if (!ids.length) return;
     try {
-      await axios.post("/tracks/delete_bulk", { ids });
+      await axios.post("/tracks/delete_artist", { ids });
       setTracks((prev) => prev.filter((t) => !selectedForDelete.has(getTrackId(t))));
       setSelectedForDelete(new Set());
     } catch (err: any) {
@@ -384,6 +524,67 @@ export default function Database() {
     return [...filtered].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }, [selectedTrackId, streams, startDate, endDate]);
 
+  // Handler passed to child so it can update the parent tracks array after successful DB save
+  const handleLookupSaved = (updated: any) => {
+    if (!updated) return;
+    const updatedId = getTrackId(updated);
+    setTracks((prev) => prev.map((t) => (getTrackId(t) === updatedId ? { ...t, ...updated } : t)));
+  };
+
+  // --- Bulk lookup implementation ---
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const handleBulkLookup = async () => {
+    if (bulkLookupRunning) return;
+    setBulkLookupRunning(true);
+    setBulkLookupProgress({ current: 0, total: tracks.length, skipped: 0, errors: [] });
+
+    for (let i = 0; i < tracks.length; i++) {
+      const t = tracks[i];
+      const tid = getTrackId(t);
+
+      // Skip if already looked up
+      if (t?.licensor_name || t?.release_date) {
+        setBulkLookupProgress((prev) => ({ ...prev, current: prev.current + 1, skipped: prev.skipped + 1 }));
+        await wait(3000);
+        continue;
+      }
+
+      try {
+        // external lookup
+        let data: any = null;
+        const win: any = window as any;
+        if (win?.__LOOKUP_SERVICE && typeof win.__LOOKUP_SERVICE.getLicensor === "function") {
+          data = await win.__LOOKUP_SERVICE.getLicensor(tid);
+        } else {
+          const base = process.env.REACT_APP_LOOKUP_URL || "";
+          const url = base
+            ? `${base.replace(/\/$/, "")}/get_licensor?track_id=${encodeURIComponent(tid)}`
+            : `/get_licensor?track_id=${encodeURIComponent(tid)}`;
+
+          const res = await fetch(url, { method: "GET", credentials: "include" });
+          if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
+          data = await res.json();
+        }
+
+        const payload = { track_id: tid, licensor_name: data?.licensor_name ?? "", release_date: data?.release_date ?? "" };
+        const resSave = await axiosInstance.post("/lookup/save", payload);
+
+        if (resSave?.data?.track) {
+          const updatedTrack = resSave.data.track;
+          setTracks((prev) => prev.map((p) => (getTrackId(p) === getTrackId(updatedTrack) ? { ...p, ...updatedTrack } : p)));
+        }
+      } catch (e: any) {
+        setBulkLookupProgress((prev) => ({ ...prev, errors: [...prev.errors, { id: tid, error: e?.message || (e?.response?.data || e) }] }));
+      } finally {
+        setBulkLookupProgress((prev) => ({ ...prev, current: prev.current + 1 }));
+        await wait(3000); // rate limit
+      }
+    }
+
+    setBulkLookupRunning(false);
+  };
+
   return (
     <div className="p-6 space-y-6 bg-white text-black min-h-screen dark:bg-gray-900 dark:text-gray-100">
       <div className="flex items-center gap-4">
@@ -393,7 +594,10 @@ export default function Database() {
         </button>
         <button onClick={() => navigate("/playable-artist")} className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover:text-black">
           Playable Artists
-        </button>  
+        </button>
+        <button onClick={() => navigate("/whitelist")} className="px-3 py-1.5 rounded bg-gray hover:bg-gray-600 hover:text-white text-black dark:bg-gray-700 dark:hover:bg-white dark:hover=text-black">
+          Whitelist
+        </button>
       </div>
 
       <div className="flex items-end gap-4">
@@ -421,13 +625,52 @@ export default function Database() {
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
+
+        {/* Toplu Sorgu Button */}
+        <div className="self-end">
+          <button
+            onClick={handleBulkLookup}
+            disabled={bulkLookupRunning || loading}
+            className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {bulkLookupRunning ? `Toplu Sorgu (${bulkLookupProgress.current}/${bulkLookupProgress.total || tracks.length})` : "Toplu Sorgu"}
+          </button>
+          {bulkLookupRunning && (
+            <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">
+              Atlanan: {bulkLookupProgress.skipped} • Hata: {bulkLookupProgress.errors.length}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Track List */}
         <motion.div variants={listContainer} initial="hidden" animate="visible" className="lg:col-span-1 border rounded-xl overflow-hidden bg-gray-450 dark:bg-gray-700">
-          <div className="bg-gray-700 dark:bg-gray-600 px-4 py-2 font-medium flex justify-between items-center text-gray-100">
-            <span>Parçalar</span>
+          <div className="bg-gray-700 dark:bg-gray-600 px-4 py-2 font-medium flex justify-between items-center text-gray-100 gap-2">
+            <div className="flex items-center gap-2 w-full">
+              <span className="min-w-[80px]">Parçalar</span>
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Ara: parça, sanatçı, albüm..."
+                    className="w-full rounded px-2 py-1 text-sm bg-white text-black dark:bg-gray-800 dark:text-white border"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={handleBulkDelete}
               disabled={selectedForDelete.size === 0}
@@ -439,8 +682,8 @@ export default function Database() {
           <div className="max-h-[70vh] overflow-auto divide-y divide-gray-700">
             {loading && <div className="p-4 text-sm text-gray-400">Yükleniyor…</div>}
             {error && <div className="p-4 text-sm text-red-600">{error}</div>}
-            {!loading && !error && tracks.length === 0 && <div className="p-4 text-sm text-gray-400">Kayıt yok</div>}
-            {tracks.map((t) => (
+            {!loading && !error && filteredTracks.length === 0 && <div className="p-4 text-sm text-gray-400">Eşleşen parça yok</div>}
+            {filteredTracks.map((t) => (
               <TrackListItem
                 key={getTrackId(t)}
                 track={t}
@@ -466,6 +709,7 @@ export default function Database() {
               series={selectedSeries}
               fetchStreams={fetchStreams}
               handleDelete={handleDelete}
+              onLookupSaved={handleLookupSaved}
             />
           ) : (
             <div className="text-gray-400">Bir parça seçin.</div>

@@ -106,6 +106,16 @@ class TrackStorage:
         if not self._column_exists("playable_tracks", "upc"):
             self.c.execute("ALTER TABLE playable_tracks ADD COLUMN upc TEXT")
 
+        if not self._column_exists("unplayable_tracks", "licensor_name"):
+            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN licensor_name TEXT")
+        if not self._column_exists("playable_tracks", "licensor_name"):
+            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN licensor_name TEXT")
+
+        if not self._column_exists("unplayable_tracks", "release_date"):
+            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN release_date TEXT")
+        if not self._column_exists("playable_tracks", "release_date"):
+            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN release_date TEXT")
+
         self.conn.commit()
 
     # ---------- UPSERTS ----------
@@ -287,21 +297,145 @@ class TrackStorage:
         except Exception as e:
             logger.exception("upsert_priority_track hata: %s", e)
 
+    def save_lookup_data(self, track_id: str, licensor_name: Optional[str], release_date: Optional[str]) -> bool:
+        """
+        Lookup butonundan gelen veriyi kaydeder (hem playable hem unplayable tabloda günceller).
+        """
+        try:
+            self.c.execute("""
+                UPDATE playable_tracks
+                SET licensor_name = ?, release_date = ?
+                WHERE id = ?
+            """, (licensor_name, release_date, track_id))
+
+            self.c.execute("""
+                UPDATE unplayable_tracks
+                SET licensor_name = ?, release_date = ?
+                WHERE id = ?
+            """, (licensor_name, release_date, track_id))
+
+            self.conn.commit()
+            logger.info("Lookup data saved for track %s", track_id)
+            return True
+        except Exception as e:
+            logger.exception("save_lookup_data hata: %s", e)
+            return False
+
     # ---------- DELETE ----------
 
     def delete_track(self, track_id: str) -> bool:
         try:
             print(f"[DEBUG] Silme denemesi: track_id={track_id}")
-            self.c.execute(
-                "DELETE FROM unplayable_tracks WHERE id = ?",
-                (track_id,)
-            )
+            
+            # Her iki tablodan sil
+            self.c.execute("DELETE FROM playable_tracks WHERE id = ?", (track_id,))
+            count_playable = self.c.rowcount
+
+            self.c.execute("DELETE FROM unplayable_tracks WHERE id = ?", (track_id,))
+            count_unplayable = self.c.rowcount
+
             self.conn.commit()
-            print(f"[DEBUG] Silinen satır sayısı: {self.c.rowcount}")
-            return self.c.rowcount > 0
+            total_deleted = count_playable + count_unplayable
+            print(f"[DEBUG] Silinen satır sayısı: {total_deleted}")
+
+            return total_deleted > 0
         except Exception as e:
             print(f"[ERROR] delete_track hata: {e}")
             return False
+
+    def delete_artist(self, artist_name: str) -> int:
+        """
+        Verilen artist_name'e ait tüm trackleri playable ve unplayable tablolardan siler.
+        Returns: silinen toplam satır sayısı
+        """
+        try:
+            # Playable tablodan sil
+            self.c.execute(
+                "DELETE FROM playable_tracks WHERE artist_names LIKE ?",
+                (f'%"{artist_name}"%',)  # JSON içinde name kontrolü
+            )
+            count_playable = self.c.rowcount
+
+            # Unplayable tablodan sil
+            self.c.execute(
+                "DELETE FROM unplayable_tracks WHERE artist_names LIKE ?",
+                (f'%"{artist_name}"%',)
+            )
+            count_unplayable = self.c.rowcount
+
+            self.conn.commit()
+            total_deleted = count_playable + count_unplayable
+            print(f"[DEBUG] Silinen toplam satır sayısı: {total_deleted}")
+            return total_deleted
+        except Exception as e:
+            print(f"[ERROR] delete_artist hata: {e}")
+            return 0
+
+    def delete_tracks_bulk(self, track_ids: List[str], owner: Optional[str] = None) -> int:
+        """
+        Verilen track_id listesi için playable + unplayable tablolardan silme yapar.
+        owner verilirse sadece owner'a ait (veya owner IS NULL legacy) kayıtları siler.
+        Dönen: toplam silinen satır sayısı
+        """
+        if not track_ids:
+            return 0
+
+        try:
+            placeholders = ",".join("?" for _ in track_ids)
+
+            if owner:
+                # playable
+                self.c.execute(
+                    f"DELETE FROM playable_tracks WHERE id IN ({placeholders}) AND (owner = ? OR owner IS NULL)",
+                    (*track_ids, owner)
+                )
+                count_playable = self.c.rowcount
+
+                # unplayable
+                self.c.execute(
+                    f"DELETE FROM unplayable_tracks WHERE id IN ({placeholders}) AND (owner = ? OR owner IS NULL)",
+                    (*track_ids, owner)
+                )
+                count_unplayable = self.c.rowcount
+            else:
+                self.c.execute(
+                    f"DELETE FROM playable_tracks WHERE id IN ({placeholders})",
+                    tuple(track_ids)
+                )
+                count_playable = self.c.rowcount
+
+                self.c.execute(
+                    f"DELETE FROM unplayable_tracks WHERE id IN ({placeholders})",
+                    tuple(track_ids)
+                )
+                count_unplayable = self.c.rowcount
+
+            self.conn.commit()
+            total_deleted = (count_playable or 0) + (count_unplayable or 0)
+            print(f"[DEBUG] Silinen toplam satır sayısı (bulk): {total_deleted}")
+            return total_deleted
+        except Exception as e:
+            logger.exception("delete_tracks_bulk hata: %s", e)
+            return 0
+
+    # Compatibility aliases for various endpoint expectations
+    def delete_tracks(self, track_ids: List[str], owner: Optional[str] = None) -> int:
+        """
+        Alias for delete_tracks_bulk. Returns number of deleted rows.
+        """
+        return self.delete_tracks_bulk(track_ids, owner)
+
+    def delete_by_ids(self, ids: List[str], owner: Optional[str] = None) -> int:
+        return self.delete_tracks_bulk(ids, owner)
+
+    def delete_by_id(self, track_id: str) -> bool:
+        return self.delete_track(track_id)
+
+    def remove_tracks(self, ids: List[str], owner: Optional[str] = None) -> int:
+        return self.delete_tracks_bulk(ids, owner)
+
+    def remove_track(self, track_id: str) -> bool:
+        return self.delete_track(track_id)
 
     # ---------- QUERIES ----------
 
@@ -426,6 +560,166 @@ class TrackStorage:
             logger.exception("get_track_historical hata: %s", e)
             return []
 
+    def get_track_by_id(self, track_id: str):
+        self.c.execute("SELECT * FROM playable_tracks WHERE id = ?", (track_id,))
+        row = self.c.fetchone()
+        if row:
+            return self._row_to_dict(self.c, row)  # ← düzeltilmiş satır
+        return None
+
+    def get_tracks_by_licensors(self, licensors: List[str], owner: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
+        """
+        Verilen licensor isimlerine (case-insensitive) uyan kayıtları playable + unplayable tablolardan döndür.
+        Eğer aynı track iki tabloda varsa playable versiyon tercih edilir.
+        """
+        try:
+            if not licensors:
+                return []
+
+            # normalize params
+            licensors_norm = [l.strip().lower() for l in licensors if l and l.strip()]
+            if not licensors_norm:
+                return []
+
+            placeholders = ",".join("?" for _ in licensors_norm)
+            params = licensors_norm[:]  # for IN (...)
+
+            owner_clause = ""
+            if owner:
+                owner_clause = " AND (owner IS NULL OR owner = ?)"
+                params_with_owner = params + [owner]
+            else:
+                params_with_owner = params
+
+            select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
+
+            query_playable = f"""
+                SELECT {select_cols} FROM playable_tracks
+                WHERE LOWER(TRIM(COALESCE(licensor_name, ''))) IN ({placeholders})
+                {owner_clause}
+            """
+
+            query_unplayable = f"""
+                SELECT {select_cols} FROM unplayable_tracks
+                WHERE LOWER(TRIM(COALESCE(licensor_name, ''))) IN ({placeholders})
+                {owner_clause}
+            """
+
+            # fetch playable
+            if owner:
+                self.c.execute(query_playable, params_with_owner)
+            else:
+                self.c.execute(query_playable, params)
+            playable_rows = self.c.fetchall()
+
+            # fetch unplayable
+            if owner:
+                self.c.execute(query_unplayable, params_with_owner)
+            else:
+                self.c.execute(query_unplayable, params)
+            unplayable_rows = self.c.fetchall()
+
+            combined = {}
+            # helper to convert
+            def row_to_dict_and_decode(cursor, row):
+                d = {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+                if d.get("artist_names"):
+                    try:
+                        d["artist_names"] = json.loads(d["artist_names"])
+                    except Exception:
+                        # eğer JSON değilse tek string olarak bırak
+                        d["artist_names"] = [d["artist_names"]]
+                else:
+                    d["artist_names"] = []
+                return d
+
+            # add playable first (prefer playable on duplicates)
+            for row in playable_rows:
+                d = row_to_dict_and_decode(self.c, row)
+                combined[d["id"]] = d
+
+            for row in unplayable_rows:
+                d = row_to_dict_and_decode(self.c, row)
+                if d["id"] not in combined:
+                    combined[d["id"]] = d
+
+            # sort by added_at desc if present, otherwise keep insertion order
+            result = list(combined.values())
+            try:
+                result.sort(key=lambda x: x.get("added_at") or "", reverse=True)
+            except Exception:
+                pass
+
+            if limit and len(result) > limit:
+                result = result[:limit]
+
+            return result
+        except Exception as e:
+            logger.exception("get_tracks_by_licensors hata: %s", e)
+            return []
+
+    def get_all_tracks(self, owner: Optional[str] = None, limit: Optional[int] = 500) -> List[Dict[str, Any]]:
+        """
+        Playable + unplayable tablolardaki tüm kayıtları döner.
+        Eğer aynı track her iki tabloda varsa playable versiyon tercih edilir.
+        owner verilirse sadece owner IS NULL veya owner eşleşen kayıtlar döner.
+        """
+        try:
+            select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
+
+            if owner:
+                self.c.execute(f"SELECT {select_cols} FROM playable_tracks WHERE (owner IS NULL OR owner = ?) ORDER BY added_at DESC", (owner,))
+            else:
+                self.c.execute(f"SELECT {select_cols} FROM playable_tracks ORDER BY added_at DESC", ())
+            playable_rows = self.c.fetchall()
+
+            if owner:
+                self.c.execute(f"SELECT {select_cols} FROM unplayable_tracks WHERE (owner IS NULL OR owner = ?) ORDER BY added_at DESC", (owner,))
+            else:
+                self.c.execute(f"SELECT {select_cols} FROM unplayable_tracks ORDER BY added_at DESC", ())
+            unplayable_rows = self.c.fetchall()
+
+            combined = {}
+
+            def row_to_dict_and_decode(cursor, row):
+                d = {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+                if d.get("artist_names"):
+                    try:
+                        d["artist_names"] = json.loads(d["artist_names"])
+                    except Exception:
+                        # Eğer JSON değilse tek string olarak listele
+                        d["artist_names"] = [d["artist_names"]]
+                else:
+                    d["artist_names"] = []
+                return d
+
+            # playable önce ekle (tercih)
+            for row in playable_rows:
+                d = row_to_dict_and_decode(self.c, row)
+                combined[d["id"]] = d
+
+            # sonra unplayable ekle, zaten yoksa
+            for row in unplayable_rows:
+                d = row_to_dict_and_decode(self.c, row)
+                if d["id"] not in combined:
+                    combined[d["id"]] = d
+
+            result = list(combined.values())
+            try:
+                result.sort(key=lambda x: x.get("added_at") or "", reverse=True)
+            except Exception:
+                # added_at format'ı karışık ise sıralama atlanır
+                pass
+
+            if limit and len(result) > limit:
+                result = result[:limit]
+
+            return result
+        except Exception as e:
+            logger.exception("get_all_tracks hata: %s", e)
+            return []
+
+
     def close(self):
         if self.conn:
             self.conn.close()
@@ -435,5 +729,12 @@ def save_track_stream_data(track_id: str, historical_data: dict, owner: str):
     storage = TrackStorage()
     try:
         storage.save_track_stream_data(track_id, historical_data, owner)
+    finally:
+        storage.close()
+
+def save_lookup_data(track_id: str, licensor_name: Optional[str], release_date: Optional[str]):
+    storage = TrackStorage()
+    try:
+        storage.save_lookup_data(track_id, licensor_name, release_date)
     finally:
         storage.close()

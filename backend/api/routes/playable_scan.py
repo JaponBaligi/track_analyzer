@@ -1,8 +1,8 @@
 # api/routes/playable_scan.py
 
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from pydantic import BaseModel
 
 from spotify_client.artist_scanner import scan_artist_and_persist_tracks
@@ -13,6 +13,8 @@ from db.track_storage import TrackStorage
 
 router = APIRouter(prefix="/playable", tags=["playable"])
 
+class BulkDeleteRequest(BaseModel):
+    track_ids: List[str]
 
 class ScanArtistRequest(BaseModel):
     artist_identifier: str
@@ -58,5 +60,24 @@ def playable_result(current_user=Depends(get_current_user)):
                     d["artist_names"] = []
             result.append(d)
         return result
+    finally:
+        storage.close()
+
+@router.delete("/tracks/delete_artist")
+def delete_artist(artist: str = Query(...), current_user=Depends(get_current_user)):
+    storage = TrackStorage()
+    try:
+        deleted_count = storage.delete_artist(artist)
+        return {"deleted": deleted_count}
+    finally:
+        storage.close()
+
+
+@router.delete("/tracks/delete_bulk")
+def delete_tracks_bulk(req: BulkDeleteRequest = Body(...), current_user=Depends(get_current_user)):
+    storage = TrackStorage()
+    try:
+        deleted_count = storage.delete_tracks_bulk(req.track_ids, owner=current_user)
+        return {"deleted": deleted_count}
     finally:
         storage.close()

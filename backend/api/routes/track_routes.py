@@ -6,6 +6,7 @@ from spotify_client.stream_data import get_track_stream_data
 from utils.logger import get_logger
 from db.track_storage import TrackStorage
 from api.dependencies import get_current_user
+from statistics import mean
 import json
 
 router = APIRouter(tags=["Track"])
@@ -44,13 +45,13 @@ def track_evaluation(track_id: str = Query(..., description="Spotify Track ID"))
         }
 
         # JSON olarak logla
-        print("\n=== /tracks/evaluate RESPONSE ===")
+        logger.debug("=== /tracks/evaluate RESPONSE ===")
         try:
-            print(json.dumps(response_data, indent=2, ensure_ascii=False))
+            logger.debug(json.dumps(response_data, indent=2, ensure_ascii=False))
         except Exception as e:
-            print(f"JSON dump error: {e}")
-            print(response_data)
-        print("=================================\n")
+            logger.warning(f"JSON dump error: {e}")
+            logger.debug(f"Response data: {response_data}")
+        logger.debug("=================================")
 
         return response_data
 
@@ -75,9 +76,28 @@ def get_streams(track_id: str, owner: str = Depends(get_current_user)):
     storage = TrackStorage()
     try:
         historical = storage.get_track_historical(track_id, owner)
-        if historical:  # DB’de veri varsa direkt dön
-            return {"error": False, "historicalData": historical}
-        else:  # DB’de veri yoksa frontend’e mesaj gönder
+        if historical:  # DB'de veri varsa direkt dön
+            # Calculate daily average (günlük ortalama)
+            daily_average = None
+            if isinstance(historical, list) and len(historical) >= 2:
+                daily_diffs = []
+                for i in range(1, len(historical)):
+                    if isinstance(historical[i], dict) and isinstance(historical[i-1], dict):
+                        current_streams = historical[i].get("streams", 0)
+                        prev_streams = historical[i-1].get("streams", 0)
+                        diff = current_streams - prev_streams
+                        if diff >= 0:  # Only count positive differences
+                            daily_diffs.append(diff)
+                
+                if daily_diffs:
+                    daily_average = round(mean(daily_diffs), 2)
+            
+            return {
+                "error": False,
+                "historicalData": historical,
+                "daily_average": daily_average
+            }
+        else:  # DB'de veri yoksa frontend'e mesaj gönder
             return {"error": True, "message": "No historical data in DB"}
     finally:
         storage.close()
@@ -90,19 +110,20 @@ def update_stream_data(
 ):
     logger.debug(f"Updating stream data for track {track_id} (owner={owner})")
     
-    # Önce DB’de veri var mı kontrol et
-    storage = TrackStorage()
-    try:
-        existing = storage.get_track_historical(track_id, owner)
-        if existing:
-            logger.info(f"Track {track_id} already has historical data in DB (owner={owner})")
-            return {"status": "success", "message": "Data already exists in DB", "historicalData": existing}
-    finally:
-        storage.close()
-
-    # Yoksa RapidAPI’den çek ve kaydet
+    # Soundcharts API'den çek ve kaydet (incremental merge yapılacak)
     result = update_stream_data_for_unplayable(track_id, owner)
+    
     if result["status"] == "error":
-        raise HTTPException(status_code=500, detail=result["message"])
+        error_type = result.get("error_type", "unknown")
+        message = result.get("message", "Unknown error")
+        
+        # Map error types to appropriate HTTP status codes
+        if error_type == "not_found":
+            raise HTTPException(status_code=404, detail=message)
+        elif error_type == "quota_exceeded":
+            raise HTTPException(status_code=403, detail=message)
+        else:
+            raise HTTPException(status_code=500, detail=message)
+    
     return result
 

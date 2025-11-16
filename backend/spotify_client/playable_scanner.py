@@ -98,9 +98,8 @@ def _chunked(iterable: List[Any], n: int) -> Iterable[List[Any]]:
         yield iterable[i:i+n]
 
 
-def get_tracks_by_ids(sp_client, ids: List[str]) -> List[Dict[str, Any]]:
-    if not ids:
-        return []
+def _fetch_tracks_in_batches(sp_client, ids: List[str]) -> List[Dict[str, Any]]:
+    """Fetch tracks from Spotify API in batches of 50."""
     tracks: List[Dict[str, Any]] = []
     for batch in _chunked(ids, 50):
         try:
@@ -112,29 +111,42 @@ def get_tracks_by_ids(sp_client, ids: List[str]) -> List[Dict[str, Any]]:
         items = [it for it in items if it]
         tracks.extend(items)
     logger.info("Fetched %d track objects by ids", len(tracks))
+    return tracks
 
+
+def _extract_unique_album_ids(tracks: List[Dict[str, Any]]) -> List[str]:
+    """Extract unique album IDs from track objects."""
     album_ids = []
     for t in tracks:
         album = (t or {}).get("album") or {}
         aid = album.get("id")
         if aid:
             album_ids.append(aid)
-    album_ids = list(dict.fromkeys(album_ids))
+    return list(dict.fromkeys(album_ids))
 
+
+def _fetch_albums_map(sp_client, album_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Fetch albums from Spotify API and return as map by album ID."""
     album_map: Dict[str, Dict[str, Any]] = {}
-    if album_ids:
-        for a_batch in _chunked(album_ids, 20):
-            try:
-                resp = sp_client.albums(a_batch)
-            except Exception as e:
-                logger.exception("sp_client.albums failed for batch (len=%d): %s", len(a_batch), e)
+    if not album_ids:
+        return album_map
+    
+    for a_batch in _chunked(album_ids, 20):
+        try:
+            resp = sp_client.albums(a_batch)
+        except Exception as e:
+            logger.exception("sp_client.albums failed for batch (len=%d): %s", len(a_batch), e)
+            continue
+        albums = resp.get("albums", []) or []
+        for alb in albums:
+            if not alb:
                 continue
-            albums = resp.get("albums", []) or []
-            for alb in albums:
-                if not alb:
-                    continue
-                album_map[alb.get("id")] = alb
+            album_map[alb.get("id")] = alb
+    return album_map
 
+
+def _enrich_tracks_with_album_upc(tracks: List[Dict[str, Any]], album_map: Dict[str, Dict[str, Any]]) -> int:
+    """Enrich tracks with UPC from album data. Returns count of enriched tracks."""
     filled = 0
     for t in tracks:
         album = (t or {}).get("album") or {}
@@ -149,17 +161,37 @@ def get_tracks_by_ids(sp_client, ids: List[str]) -> List[Dict[str, Any]]:
                 if full_ext.get("upc"):
                     t.setdefault("album", {})["external_ids"] = full_ext
                     filled += 1
+    return filled
 
-    logger.info("Populated album.external_ids (with upc) for %d tracks using sp.albums()", filled)
 
+def _count_tracks_with_upc(tracks: List[Dict[str, Any]]) -> int:
+    """Count tracks that have UPC in either track or album external_ids."""
     upc_count = 0
     for t in tracks:
         track_ext = t.get("external_ids") or {}
         album_ext = (t.get("album") or {}).get("external_ids") or {}
         if track_ext.get("upc") or album_ext.get("upc"):
             upc_count += 1
-    logger.info("Tracks with UPC after enrichment: %d/%d", upc_count, len(tracks))
+    return upc_count
 
+
+def get_tracks_by_ids(sp_client, ids: List[str]) -> List[Dict[str, Any]]:
+    if not ids:
+        return []
+    
+    tracks = _fetch_tracks_in_batches(sp_client, ids)
+    if not tracks:
+        return []
+    
+    album_ids = _extract_unique_album_ids(tracks)
+    album_map = _fetch_albums_map(sp_client, album_ids)
+    filled = _enrich_tracks_with_album_upc(tracks, album_map)
+    
+    logger.info("Populated album.external_ids (with upc) for %d tracks using sp.albums()", filled)
+    
+    upc_count = _count_tracks_with_upc(tracks)
+    logger.info("Tracks with UPC after enrichment: %d/%d", upc_count, len(tracks))
+    
     return tracks
 
 
@@ -174,13 +206,30 @@ def is_track_playable_sp(track_obj: Dict[str, Any], market: Optional[str] = None
     return True
 
 
+def _extract_image_url_from_album(album: Dict[str, Any]) -> str | None:
+    """Extract image URL from album images array."""
+    images = album.get("images", [])
+    if images and images[0]:
+        return images[0].get("url")
+    return None
+
+
+def _extract_upc_from_track_obj(track_obj: Dict[str, Any]) -> str | None:
+    """Extract UPC from track or album external_ids."""
+    track_ext_ids = track_obj.get("external_ids") or {}
+    album = track_obj.get("album", {}) or {}
+    album_ext_ids = album.get("external_ids") or {}
+    return track_ext_ids.get("upc") or album_ext_ids.get("upc")
+
+
 def _track_obj_to_storage_format(track_obj: Dict[str, Any]) -> Dict[str, Any]:
     try:
         album = track_obj.get("album", {}) or {}
         track_ext_ids = track_obj.get("external_ids") or {}
-        album_ext_ids = album.get("external_ids") or {}
-
-        upc = track_ext_ids.get("upc") or album_ext_ids.get("upc")
+        
+        upc = _extract_upc_from_track_obj(track_obj)
+        image_url = _extract_image_url_from_album(album)
+        spotify_url = (track_obj.get("external_urls") or {}).get("spotify")
 
         return {
             "id": track_obj.get("id"),
@@ -190,8 +239,8 @@ def _track_obj_to_storage_format(track_obj: Dict[str, Any]) -> Dict[str, Any]:
             "duration_ms": track_obj.get("duration_ms"),
             "popularity": track_obj.get("popularity"),
             "is_playable": track_obj.get("is_playable", True),
-            "spotify_url": (track_obj.get("external_urls") or {}).get("spotify"),
-            "image_url": (album.get("images") or [None])[0] and (album.get("images") or [None])[0].get("url"),
+            "spotify_url": spotify_url,
+            "image_url": image_url,
             "isrc": track_ext_ids.get("isrc"),
             "upc": upc
         }

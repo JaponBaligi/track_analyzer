@@ -12,9 +12,16 @@ env_path = Path(__file__).parent.parent / "config" / ".env"
 load_dotenv(dotenv_path=env_path)
 
 ALGORITHM = os.getenv("JWT_ALGORITHM")
+if not ALGORITHM:
+    raise EnvironmentError("Missing required environment variable: JWT_ALGORITHM")
+
 USER1_PASSWORD = os.getenv("USER1_PASSWORD", "")
 USER2_PASSWORD = os.getenv("USER2_PASSWORD", "")
+
 JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise EnvironmentError("Missing required environment variable: JWT_SECRET")
+
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "10080"))  # 7 gün
 
 Owner = Literal["kullanici1", "kullanici2"]
@@ -44,5 +51,8 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
+    except JWTError as e:
+        from utils.logger import get_logger
+        logger = get_logger(__name__)
+        logger.debug(f"JWT decode error: {type(e).__name__}: {str(e)}")
         return None

@@ -13,7 +13,7 @@ RUN npm install
 # Kodları kopyala
 COPY . /app
 
-# React build al (Electron kullanıyorsan, build sonrası electron başlatabilirsin)
+# React build al
 RUN npm run build
 
 # Development için React başlat (production’da serve kullanılır)

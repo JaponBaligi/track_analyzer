@@ -1,5 +1,5 @@
 // web_panel/src/context/AppContext.tsx
-import React, { createContext, useState, ReactNode, useMemo, useContext } from "react";
+import React, { createContext, useState, ReactNode, useMemo, useContext, useCallback } from "react";
 import { Playlist, Artist, Track } from "../types";
 
 export type AppContextType = {
@@ -46,7 +46,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [region, setRegion] = useState<string>("TR"); // Default region
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
+  const toggleTheme = useCallback(() => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -79,6 +81,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       error,
       region,
       theme,
+      toggleTheme,
     ]
   );
 

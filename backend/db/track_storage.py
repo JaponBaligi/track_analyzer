@@ -26,8 +26,8 @@ class TrackStorage:
         self.c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?;", (table,))
         return self.c.fetchone() is not None
 
-    def _init_db(self):
-        # unplayable_tracks
+    def _create_tables(self):
+        """Create all required tables if they don't exist."""
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS unplayable_tracks (
                 id TEXT PRIMARY KEY,
@@ -46,7 +46,6 @@ class TrackStorage:
                 upc TEXT
             )
         """)
-        # playable_tracks
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS playable_tracks (
                 id TEXT PRIMARY KEY,
@@ -65,8 +64,6 @@ class TrackStorage:
                 upc TEXT
             )
         """)
-        
-        # track_streams: artık owner ile primary key olacak
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS track_streams (
                 track_id TEXT,
@@ -76,8 +73,6 @@ class TrackStorage:
                 PRIMARY KEY (track_id, owner)
             )
         """)
-
-        # priority_tracks
         self.c.execute("""
             CREATE TABLE IF NOT EXISTS priority_tracks (
                 track_id TEXT,
@@ -87,35 +82,37 @@ class TrackStorage:
                 PRIMARY KEY (track_id, owner)
             )
         """)
+        self.c.execute("""
+            CREATE TABLE IF NOT EXISTS track_uuid_cache (
+                track_id TEXT PRIMARY KEY,
+                uuid TEXT NOT NULL,
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
 
-        # Migration: owner kolonu yoksa ekle
-        if not self._column_exists("unplayable_tracks", "owner"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN owner TEXT")
-        if not self._column_exists("playable_tracks", "owner"):
-            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN owner TEXT")
+    def _add_column_if_not_exists(self, table: str, column: str, column_type: str = "TEXT"):
+        """Add a column to a table if it doesn't exist."""
+        if not self._column_exists(table, column):
+            self.c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
 
-        # Migration: isrc kolonu yoksa ekle
-        if not self._column_exists("unplayable_tracks", "isrc"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN isrc TEXT")
-        if not self._column_exists("playable_tracks", "isrc"):
-            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN isrc TEXT")
+    def _migrate_columns(self):
+        """Add migration columns to track tables if they don't exist."""
+        tables = ["unplayable_tracks", "playable_tracks"]
+        columns = [
+            ("owner", "TEXT"),
+            ("isrc", "TEXT"),
+            ("upc", "TEXT"),
+            ("licensor_name", "TEXT"),
+            ("release_date", "TEXT")
+        ]
+        for table in tables:
+            for column, col_type in columns:
+                self._add_column_if_not_exists(table, column, col_type)
 
-        # Migration: upc kolonu yoksa ekle
-        if not self._column_exists("unplayable_tracks", "upc"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN upc TEXT")
-        if not self._column_exists("playable_tracks", "upc"):
-            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN upc TEXT")
-
-        if not self._column_exists("unplayable_tracks", "licensor_name"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN licensor_name TEXT")
-        if not self._column_exists("playable_tracks", "licensor_name"):
-            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN licensor_name TEXT")
-
-        if not self._column_exists("unplayable_tracks", "release_date"):
-            self.c.execute("ALTER TABLE unplayable_tracks ADD COLUMN release_date TEXT")
-        if not self._column_exists("playable_tracks", "release_date"):
-            self.c.execute("ALTER TABLE playable_tracks ADD COLUMN release_date TEXT")
-
+    def _init_db(self):
+        self._create_tables()
+        self._migrate_columns()
         self.conn.commit()
 
     # ---------- UPSERTS ----------
@@ -235,11 +232,50 @@ class TrackStorage:
             return False
 
 
-    def save_track_stream_data(self, track_id: str, historical_data: dict, owner: str):
+    def _extract_date_key_from_stream_item(self, item) -> str | None:
+        """Extract date key from a stream item (dict or tuple/list format)."""
+        if isinstance(item, dict):
+            return item.get("date")
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            return str(item[0])
+        return None
+
+    def _normalize_stream_item_to_dict(self, item) -> dict | None:
+        """Normalize a stream item to {date, streams} dict format."""
+        if isinstance(item, dict):
+            return {"date": str(item["date"]), "streams": int(item["streams"])}
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            return {"date": str(item[0]), "streams": int(item[1])}
+        return None
+
+    def _merge_stream_data(self, existing: list, new_streams: list) -> dict:
+        """Merge new stream data with existing, only adding new dates."""
+        existing_dates = {item["date"]: item for item in existing}
+        merged_streams = list(existing)
+        
+        for new_item in new_streams:
+            date_key = self._extract_date_key_from_stream_item(new_item)
+            if date_key and date_key not in existing_dates:
+                normalized = self._normalize_stream_item_to_dict(new_item)
+                if normalized:
+                    merged_streams.append(normalized)
+        
+        merged_streams.sort(key=lambda x: x["date"])
+        return {"streams": merged_streams}
+
+    def save_track_stream_data(self, track_id: str, historical_data: dict, owner: str, merge: bool = True):
         """
         Owner bazlı stream verisi kaydeder.
+        If merge=True, merges new data with existing (only adds new dates, doesn't overwrite).
+        If merge=False, replaces existing data.
         """
         try:
+            new_streams = historical_data.get("streams", [])
+            
+            if merge:
+                existing = self.get_track_historical(track_id, owner)
+                historical_data = self._merge_stream_data(existing, new_streams)
+            
             hist_json = json.dumps(historical_data, ensure_ascii=False)
             last_updated = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -252,9 +288,39 @@ class TrackStorage:
             """, (track_id, owner, hist_json, last_updated))
 
             self.conn.commit()
-            logger.info("Historical stream data saved for track %s (owner=%s)", track_id, owner)
+            logger.info("Historical stream data saved for track %s (owner=%s, merge=%s)", track_id, owner, merge)
         except Exception as e:
             logger.exception("save_track_stream_data hata: %s", e)
+
+    def save_track_uuid(self, track_id: str, uuid: str):
+        """
+        Cache Soundcharts UUID for a track.
+        """
+        try:
+            now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            self.c.execute("""
+                INSERT INTO track_uuid_cache (track_id, uuid, created_at, updated_at)
+                VALUES (?, ?, COALESCE((SELECT created_at FROM track_uuid_cache WHERE track_id = ?), ?), ?)
+                ON CONFLICT(track_id) DO UPDATE SET
+                    uuid=excluded.uuid,
+                    updated_at=excluded.updated_at
+            """, (track_id, uuid, track_id, now, now))
+            self.conn.commit()
+            logger.debug("UUID cached for track %s: %s", track_id, uuid)
+        except Exception as e:
+            logger.exception("save_track_uuid hata: %s", e)
+
+    def get_track_uuid(self, track_id: str) -> Optional[str]:
+        """
+        Get cached Soundcharts UUID for a track.
+        """
+        try:
+            self.c.execute("SELECT uuid FROM track_uuid_cache WHERE track_id = ?", (track_id,))
+            row = self.c.fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            logger.exception("get_track_uuid hata: %s", e)
+            return None
 
     def save_unplayable_track_if_new(self, track_data: dict, owner: Optional[str] = None) -> bool:
         """
@@ -325,7 +391,7 @@ class TrackStorage:
 
     def delete_track(self, track_id: str) -> bool:
         try:
-            print(f"[DEBUG] Silme denemesi: track_id={track_id}")
+            logger.debug(f"Silme denemesi: track_id={track_id}")
             
             # Her iki tablodan sil
             self.c.execute("DELETE FROM playable_tracks WHERE id = ?", (track_id,))
@@ -336,11 +402,11 @@ class TrackStorage:
 
             self.conn.commit()
             total_deleted = count_playable + count_unplayable
-            print(f"[DEBUG] Silinen satır sayısı: {total_deleted}")
+            logger.debug(f"Silinen satır sayısı: {total_deleted}")
 
             return total_deleted > 0
         except Exception as e:
-            print(f"[ERROR] delete_track hata: {e}")
+            logger.error(f"delete_track hata: {e}", exc_info=True)
             return False
 
     def delete_artist(self, artist_name: str) -> int:
@@ -365,10 +431,10 @@ class TrackStorage:
 
             self.conn.commit()
             total_deleted = count_playable + count_unplayable
-            print(f"[DEBUG] Silinen toplam satır sayısı: {total_deleted}")
+            logger.debug(f"Silinen toplam satır sayısı: {total_deleted}")
             return total_deleted
         except Exception as e:
-            print(f"[ERROR] delete_artist hata: {e}")
+            logger.error(f"delete_artist hata: {e}", exc_info=True)
             return 0
 
     def delete_tracks_bulk(self, track_ids: List[str], owner: Optional[str] = None) -> int:
@@ -412,7 +478,7 @@ class TrackStorage:
 
             self.conn.commit()
             total_deleted = (count_playable or 0) + (count_unplayable or 0)
-            print(f"[DEBUG] Silinen toplam satır sayısı (bulk): {total_deleted}")
+            logger.debug(f"Silinen toplam satır sayısı (bulk): {total_deleted}")
             return total_deleted
         except Exception as e:
             logger.exception("delete_tracks_bulk hata: %s", e)
@@ -567,96 +633,105 @@ class TrackStorage:
             return self._row_to_dict(self.c, row)  # ← düzeltilmiş satır
         return None
 
+    def _row_to_dict_and_decode_artist_names(self, cursor, row) -> Dict[str, Any]:
+        """Convert database row to dict and decode artist_names JSON."""
+        d = {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+        if d.get("artist_names"):
+            try:
+                d["artist_names"] = json.loads(d["artist_names"])
+            except Exception:
+                d["artist_names"] = [d["artist_names"]]
+        else:
+            d["artist_names"] = []
+        return d
+
+    def _build_licensor_query(self, placeholders: str, owner: Optional[str]) -> tuple[str, list]:
+        """Build SQL query and params for licensor search."""
+        select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
+        owner_clause = " AND (owner IS NULL OR owner = ?)" if owner else ""
+        query = f"""
+            SELECT {select_cols} FROM {{table}}
+            WHERE LOWER(TRIM(COALESCE(licensor_name, ''))) IN ({placeholders})
+            {owner_clause}
+        """
+        return query, owner_clause
+
+    def _fetch_tracks_by_licensors_from_table(
+        self, table: str, placeholders: str, params: list, owner: Optional[str]
+    ) -> list:
+        """Fetch tracks from a specific table by licensors."""
+        query_template, owner_clause = self._build_licensor_query(placeholders, owner)
+        query = query_template.format(table=table)
+        params_with_owner = params + [owner] if owner else params
+        self.c.execute(query, params_with_owner)
+        return self.c.fetchall()
+
+    def _merge_track_results(self, playable_rows: list, unplayable_rows: list) -> List[Dict[str, Any]]:
+        """Merge playable and unplayable track results, preferring playable."""
+        combined = {}
+        for row in playable_rows:
+            d = self._row_to_dict_and_decode_artist_names(self.c, row)
+            combined[d["id"]] = d
+        for row in unplayable_rows:
+            d = self._row_to_dict_and_decode_artist_names(self.c, row)
+            if d["id"] not in combined:
+                combined[d["id"]] = d
+        return list(combined.values())
+
+    def _normalize_licensors(self, licensors: List[str]) -> List[str]:
+        """Normalize licensor names (strip and lowercase). Returns empty list if invalid."""
+        if not licensors:
+            return []
+        normalized = [l.strip().lower() for l in licensors if l and l.strip()]
+        return normalized if normalized else []
+
+    def _sort_and_limit_results(self, result: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+        """Sort results by added_at desc and apply limit."""
+        try:
+            result.sort(key=lambda x: x.get("added_at") or "", reverse=True)
+        except Exception:
+            pass
+        if limit and len(result) > limit:
+            result = result[:limit]
+        return result
+
     def get_tracks_by_licensors(self, licensors: List[str], owner: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
         """
         Verilen licensor isimlerine (case-insensitive) uyan kayıtları playable + unplayable tablolardan döndür.
         Eğer aynı track iki tabloda varsa playable versiyon tercih edilir.
         """
         try:
-            if not licensors:
-                return []
-
-            # normalize params
-            licensors_norm = [l.strip().lower() for l in licensors if l and l.strip()]
+            licensors_norm = self._normalize_licensors(licensors)
             if not licensors_norm:
                 return []
 
             placeholders = ",".join("?" for _ in licensors_norm)
-            params = licensors_norm[:]  # for IN (...)
+            params = licensors_norm[:]
 
-            owner_clause = ""
-            if owner:
-                owner_clause = " AND (owner IS NULL OR owner = ?)"
-                params_with_owner = params + [owner]
-            else:
-                params_with_owner = params
+            playable_rows = self._fetch_tracks_by_licensors_from_table(
+                "playable_tracks", placeholders, params, owner
+            )
+            unplayable_rows = self._fetch_tracks_by_licensors_from_table(
+                "unplayable_tracks", placeholders, params, owner
+            )
 
-            select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
-
-            query_playable = f"""
-                SELECT {select_cols} FROM playable_tracks
-                WHERE LOWER(TRIM(COALESCE(licensor_name, ''))) IN ({placeholders})
-                {owner_clause}
-            """
-
-            query_unplayable = f"""
-                SELECT {select_cols} FROM unplayable_tracks
-                WHERE LOWER(TRIM(COALESCE(licensor_name, ''))) IN ({placeholders})
-                {owner_clause}
-            """
-
-            # fetch playable
-            if owner:
-                self.c.execute(query_playable, params_with_owner)
-            else:
-                self.c.execute(query_playable, params)
-            playable_rows = self.c.fetchall()
-
-            # fetch unplayable
-            if owner:
-                self.c.execute(query_unplayable, params_with_owner)
-            else:
-                self.c.execute(query_unplayable, params)
-            unplayable_rows = self.c.fetchall()
-
-            combined = {}
-            # helper to convert
-            def row_to_dict_and_decode(cursor, row):
-                d = {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
-                if d.get("artist_names"):
-                    try:
-                        d["artist_names"] = json.loads(d["artist_names"])
-                    except Exception:
-                        # eğer JSON değilse tek string olarak bırak
-                        d["artist_names"] = [d["artist_names"]]
-                else:
-                    d["artist_names"] = []
-                return d
-
-            # add playable first (prefer playable on duplicates)
-            for row in playable_rows:
-                d = row_to_dict_and_decode(self.c, row)
-                combined[d["id"]] = d
-
-            for row in unplayable_rows:
-                d = row_to_dict_and_decode(self.c, row)
-                if d["id"] not in combined:
-                    combined[d["id"]] = d
-
-            # sort by added_at desc if present, otherwise keep insertion order
-            result = list(combined.values())
-            try:
-                result.sort(key=lambda x: x.get("added_at") or "", reverse=True)
-            except Exception:
-                pass
-
-            if limit and len(result) > limit:
-                result = result[:limit]
-
-            return result
+            result = self._merge_track_results(playable_rows, unplayable_rows)
+            return self._sort_and_limit_results(result, limit)
         except Exception as e:
             logger.exception("get_tracks_by_licensors hata: %s", e)
             return []
+
+    def _fetch_all_tracks_from_table(self, table: str, owner: Optional[str]) -> list:
+        """Fetch all tracks from a specific table."""
+        select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
+        if owner:
+            self.c.execute(
+                f"SELECT {select_cols} FROM {table} WHERE (owner IS NULL OR owner = ?) ORDER BY added_at DESC",
+                (owner,)
+            )
+        else:
+            self.c.execute(f"SELECT {select_cols} FROM {table} ORDER BY added_at DESC", ())
+        return self.c.fetchall()
 
     def get_all_tracks(self, owner: Optional[str] = None, limit: Optional[int] = 500) -> List[Dict[str, Any]]:
         """
@@ -665,50 +740,14 @@ class TrackStorage:
         owner verilirse sadece owner IS NULL veya owner eşleşen kayıtlar döner.
         """
         try:
-            select_cols = "id, name, artist_names, album_name, duration_ms, popularity, is_playable, spotify_url, image_url, playlist_id, added_at, owner, isrc, upc, licensor_name, release_date"
+            playable_rows = self._fetch_all_tracks_from_table("playable_tracks", owner)
+            unplayable_rows = self._fetch_all_tracks_from_table("unplayable_tracks", owner)
 
-            if owner:
-                self.c.execute(f"SELECT {select_cols} FROM playable_tracks WHERE (owner IS NULL OR owner = ?) ORDER BY added_at DESC", (owner,))
-            else:
-                self.c.execute(f"SELECT {select_cols} FROM playable_tracks ORDER BY added_at DESC", ())
-            playable_rows = self.c.fetchall()
-
-            if owner:
-                self.c.execute(f"SELECT {select_cols} FROM unplayable_tracks WHERE (owner IS NULL OR owner = ?) ORDER BY added_at DESC", (owner,))
-            else:
-                self.c.execute(f"SELECT {select_cols} FROM unplayable_tracks ORDER BY added_at DESC", ())
-            unplayable_rows = self.c.fetchall()
-
-            combined = {}
-
-            def row_to_dict_and_decode(cursor, row):
-                d = {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
-                if d.get("artist_names"):
-                    try:
-                        d["artist_names"] = json.loads(d["artist_names"])
-                    except Exception:
-                        # Eğer JSON değilse tek string olarak listele
-                        d["artist_names"] = [d["artist_names"]]
-                else:
-                    d["artist_names"] = []
-                return d
-
-            # playable önce ekle (tercih)
-            for row in playable_rows:
-                d = row_to_dict_and_decode(self.c, row)
-                combined[d["id"]] = d
-
-            # sonra unplayable ekle, zaten yoksa
-            for row in unplayable_rows:
-                d = row_to_dict_and_decode(self.c, row)
-                if d["id"] not in combined:
-                    combined[d["id"]] = d
-
-            result = list(combined.values())
+            result = self._merge_track_results(playable_rows, unplayable_rows)
+            
             try:
                 result.sort(key=lambda x: x.get("added_at") or "", reverse=True)
             except Exception:
-                # added_at format'ı karışık ise sıralama atlanır
                 pass
 
             if limit and len(result) > limit:
@@ -725,10 +764,10 @@ class TrackStorage:
             self.conn.close()
 
 # ---- Modül-dışı uyumluluk ----
-def save_track_stream_data(track_id: str, historical_data: dict, owner: str):
+def save_track_stream_data(track_id: str, historical_data: dict, owner: str, merge: bool = True):
     storage = TrackStorage()
     try:
-        storage.save_track_stream_data(track_id, historical_data, owner)
+        storage.save_track_stream_data(track_id, historical_data, owner, merge=merge)
     finally:
         storage.close()
 

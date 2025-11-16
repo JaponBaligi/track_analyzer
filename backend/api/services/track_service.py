@@ -33,35 +33,81 @@ def evaluate_unplayable_track(track_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _handle_historical_data_error(historical_data: dict) -> dict:
+    """Handle error responses from historical data fetch. Returns error response dict."""
+    error_type = historical_data.get("error")
+    error_message = historical_data.get("message", "Historical stream data fetch failed")
+    
+    if error_type == "not_found":
+        return {
+            "status": "error",
+            "error_type": "not_found",
+            "message": "Song not found in Soundcharts database. It may be added within 24 hours."
+        }
+    elif error_type == "quota_exceeded":
+        return {
+            "status": "error",
+            "error_type": "quota_exceeded",
+            "message": "Soundcharts API quota exceeded or billing issue. Please check your account."
+        }
+    else:
+        return {
+            "status": "error",
+            "error_type": "fetch_failed",
+            "message": error_message
+        }
+
+
+def _extract_raw_streams(historical_data) -> list:
+    """Extract raw streams list from historical data (dict or list format)."""
+    if isinstance(historical_data, dict) and "streams" in historical_data:
+        return historical_data["streams"]
+    elif isinstance(historical_data, list):
+        return historical_data
+    return None
+
+
+def _normalize_stream_item(item) -> dict | None:
+    """Normalize a single stream item to {date, streams} format."""
+    if isinstance(item, dict) and "date" in item and "streams" in item:
+        return {"date": str(item["date"]), "streams": int(item["streams"])}
+    elif isinstance(item, (list, tuple)) and len(item) == 2:
+        return {"date": str(item[0]), "streams": int(item[1])}
+    return None
+
+
+def _normalize_streams(raw_streams: list) -> list[dict]:
+    """Normalize list of stream items to standard format."""
+    normalized_streams = []
+    for item in raw_streams:
+        normalized = _normalize_stream_item(item)
+        if normalized:
+            normalized_streams.append(normalized)
+    return normalized_streams
+
+
 def update_stream_data_for_unplayable(track_id: str, owner: str):
     """
-    RapidAPI'den stream verisi çekip normalize edip DB'ye kaydeder.
+    Soundcharts API'den stream verisi çekip normalize edip DB'ye kaydeder.
+    Merges new data with existing data (incremental update).
     """
     historical_data = get_historical_stream_count(track_id)
 
     if not historical_data or (isinstance(historical_data, dict) and "error" in historical_data):
-        logger.warning(f"Historical stream data fetch error for track {track_id}")
-        return {"status": "error", "message": "Historical stream data fetch failed"}
+        return _handle_historical_data_error(
+            historical_data if isinstance(historical_data, dict) else {}
+        )
 
     try:
-        # Normalize
-        if isinstance(historical_data, dict) and "streams" in historical_data:
-            raw_streams = historical_data["streams"]
-        elif isinstance(historical_data, list):
-            raw_streams = historical_data
-        else:
+        raw_streams = _extract_raw_streams(historical_data)
+        if raw_streams is None:
             logger.warning(f"Unexpected historical data format for {track_id}: {type(historical_data)}")
             return {"status": "error", "message": "Unexpected data format"}
 
-        normalized_streams = []
-        for item in raw_streams:
-            if isinstance(item, dict) and "date" in item and "streams" in item:
-                normalized_streams.append({"date": str(item["date"]), "streams": int(item["streams"])})
-            elif isinstance(item, (list, tuple)) and len(item) == 2:
-                normalized_streams.append({"date": str(item[0]), "streams": int(item[1])})
+        normalized_streams = _normalize_streams(raw_streams)
 
         storage = TrackStorage()
-        storage.save_track_stream_data(track_id, {"streams": normalized_streams}, owner)
+        storage.save_track_stream_data(track_id, {"streams": normalized_streams}, owner, merge=True)
         storage.close()
 
         logger.info(f"Historical stream data saved for track {track_id} (owner={owner})")

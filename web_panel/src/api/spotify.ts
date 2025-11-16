@@ -10,7 +10,7 @@ export const searchArtist = async (artistName: string): Promise<Artist[]> => {
   return data;
 };
 
-// Artist taraması (RapidAPI ve playlist taraması yapıyor, backend’de /artists/scan mevcut)
+// Artist taraması (backend'de /artists/scan mevcut)
 export const scanArtist = async (artistName: string, region?: string, depth?: number) => {
   const body: Record<string, any> = { artist_name: artistName };
   if (region) body.region = region;
@@ -52,7 +52,7 @@ export const getStreamSeries = async (trackId: string) => {
   return data;
 };
 
-// RapidAPI’den çekip veritabanına kaydeden servis (backend → POST /stream/update)
+// Soundcharts API'den çekip veritabanına kaydeden servis (backend → POST /stream/update)
 export const updateAndSaveStreamSeries = async (trackId: string) => {
   const { data } = await axios.post("/stream/update", null, {
     params: { track_id: trackId },

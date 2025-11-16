@@ -4,7 +4,8 @@ from fastapi import APIRouter
 from .artists import router as artist_router
 from .playlists import router as playlist_router
 from .track_routes import router as track_router
-from .streams import router as streams_router
+# from .streams import router as streams_router  # Deprecated - endpoint moved to track_routes.py
+from .streams_bulk import router as streams_bulk_router
 from .auth import router as auth_router
 from .db_view import router as db_router
 from .flagged_artists import router as flagged_router
@@ -25,11 +26,14 @@ router.include_router(playlist_router, prefix="/playlists", tags=["playlists"])
 
 # Track routes
 router.include_router(track_router, prefix="", tags=["tracks"])
-router.include_router(db_view.router, prefix="/tracks", tags=["tracks-db"])
+router.include_router(db_router, prefix="/tracks", tags=["tracks-db"])
 router.include_router(db_router, prefix="/db", tags=["db"])
 
-# Stream routes
-router.include_router(streams_router, prefix="", tags=["streams"])
+# Stream routes (deprecated - now handled in track_routes.py)
+# router.include_router(streams_router, prefix="", tags=["streams"])
+
+# Bulk stream update routes
+router.include_router(streams_bulk_router, prefix="", tags=["streams-bulk"])
 
 # Flagged Artist routes
 router.include_router(flagged_router, prefix="", tags=["Flagged Artists"])

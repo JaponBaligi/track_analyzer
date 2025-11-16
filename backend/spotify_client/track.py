@@ -27,10 +27,26 @@ def get_track_popularity(track_id: str) -> int | None:
         return None
 
 
+def _extract_upc_from_track(track: dict) -> str | None:
+    """Extract UPC from track or album external_ids."""
+    track_ext_ids = track.get("external_ids") or {}
+    album = track.get("album") or {}
+    album_ext_ids = album.get("external_ids") or {}
+    return track_ext_ids.get("upc") or album_ext_ids.get("upc")
+
+
+def _extract_image_url(album: dict) -> str | None:
+    """Extract image URL from album images."""
+    images = album.get("images", [])
+    if images and images[0]:
+        return images[0].get("url")
+    return None
+
+
 def get_track_info(track_id: str) -> dict | None:
     """
     Belirtilen track ID için tam bilgileri döner.
-    UPC hem track hem album external_ids’den alınır.
+    UPC hem track hem album external_ids'den alınır.
     """
     try:
         logger.debug(f"Track bilgileri sorgulanıyor: {track_id}")
@@ -42,9 +58,8 @@ def get_track_info(track_id: str) -> dict | None:
 
         album = track.get("album") or {}
         track_ext_ids = track.get("external_ids") or {}
-        album_ext_ids = album.get("external_ids") or {}
-
-        upc = track_ext_ids.get("upc") or album_ext_ids.get("upc")
+        upc = _extract_upc_from_track(track)
+        image_url = _extract_image_url(album)
 
         return {
             "id": track.get("id"),
@@ -55,7 +70,7 @@ def get_track_info(track_id: str) -> dict | None:
             "popularity": track.get("popularity"),
             "is_playable": track.get("is_playable", True),
             "spotify_url": (track.get("external_urls") or {}).get("spotify"),
-            "image_url": (album.get("images") or [None])[0] and (album.get("images") or [None])[0].get("url"),
+            "image_url": image_url,
             "isrc": track_ext_ids.get("isrc"),
             "upc": upc
         }

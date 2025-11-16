@@ -5,9 +5,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from db.track_storage import TrackStorage
+from utils.logger import get_logger
 import requests
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 ISRC_SERVICE_URL = os.getenv("ISRC_SERVICE_URL", "http://127.0.0.1:1337/get_licensor")
 
@@ -19,6 +21,20 @@ class LookupSaveRequest(BaseModel):
 class BulkDeleteRequest(BaseModel):
     ids: List[str]
 
+def _fetch_lookup_data_from_service(track_id: str) -> tuple[str, str]:
+    """Fetch licensor and release_date from ISRC service. Returns (licensor, release_date)."""
+    try:
+        resp = requests.get(ISRC_SERVICE_URL, params={"track_id": track_id}, timeout=6)
+        resp.raise_for_status()
+        info = resp.json()
+        licensor = info.get("licensor_name") or info.get("licensor") or ""
+        release_date = info.get("release_date") or info.get("live_timestamp") or ""
+        return licensor, release_date
+    except Exception as e:
+        logger.warning(f"ISRC service lookup failed: {e}")
+        return "", ""
+
+
 @router.post("/save")
 def save_lookup(req: LookupSaveRequest):
     storage = TrackStorage()
@@ -27,14 +43,9 @@ def save_lookup(req: LookupSaveRequest):
         release_date = (req.release_date or "").strip()
 
         if not licensor or not release_date:
-            try:
-                resp = requests.get(ISRC_SERVICE_URL, params={"track_id": req.track_id}, timeout=6)
-                resp.raise_for_status()
-                info = resp.json()
-                licensor = licensor or info.get("licensor_name") or info.get("licensor") or ""
-                release_date = release_date or info.get("release_date") or info.get("live_timestamp") or ""
-            except Exception as e:
-                print(f"ISRC service lookup failed: {e}")
+            service_licensor, service_release_date = _fetch_lookup_data_from_service(req.track_id)
+            licensor = licensor or service_licensor
+            release_date = release_date or service_release_date
 
         ok = storage.save_lookup_data(req.track_id, licensor, release_date)
         if not ok:

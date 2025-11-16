@@ -5,12 +5,6 @@ import ScanResultList from "../components/ScanResultList";
 import type { Track } from "../types";
 import { JSX } from "react/jsx-runtime";
 
-type ScanResult = {
-  success?: boolean;
-  data?: any;
-  error?: string;
-};
-
 function mapDbRowToTrack(row: any): Track {
   const artistNames = (() => {
     try {
@@ -41,12 +35,10 @@ function mapDbRowToTrack(row: any): Track {
 export default function ArtistScanner(): JSX.Element {
   const [artist, setArtist] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
 
   const clearResults = () => {
-    setResult(null);
     setError(null);
     setTracks([]);
   };
@@ -59,8 +51,7 @@ export default function ArtistScanner(): JSX.Element {
     const scanTime = new Date().toISOString();
 
     try {
-      const res = await scanArtistPlayable(artist);
-      setResult({ success: res?.success ?? true, data: res?.data });
+      await scanArtistPlayable(artist);
 
       const rows = await getPlayableTracksByOwner();
       console.log("ROWS:", rows)
@@ -74,7 +65,6 @@ export default function ArtistScanner(): JSX.Element {
       console.error("Scan error:", err);
       const message = err?.response?.data?.detail || err?.message || "Bilinmeyen hata";
       setError(String(message));
-      setResult({ error: message });
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../api/axiosInstance";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export default function Login() {
 
 const handleLogin = async () => {
   try {
-    const response = await axios.post("http://localhost:8000/api/auth/login", { password });
+    const response = await axiosInstance.post("/auth/login", { password });
     const { access_token } = response.data;
     localStorage.setItem("token", access_token);
     navigate("/");

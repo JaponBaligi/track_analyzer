@@ -11,6 +11,56 @@ from spotify_client.playable_scanner import scan_artist_and_persist_tracks
 
 logger = get_logger(__name__)
 
+def _scan_playlist_and_collect_results(
+    playlist: dict,
+    current_owner: str,
+    market: str | None,
+    collected_playlists: list,
+    collected_tracks: list
+) -> None:
+    """Scan a single playlist and collect results."""
+    pid = playlist["id"]
+    logger.debug(f"Playlist taranıyor: {pid} (Owner: {playlist['owner']})")
+
+    try:
+        unplayables = scan_playlist_for_unplayable_tracks(pid, market=market, owner=current_owner)
+        if unplayables:
+            for t in unplayables:
+                logger.warning(f"[!] Unplayable track bulundu: {t['track_name']} (ID: {t['track_id']})")
+        else:
+            logger.info(f"Playlist tamamen oynatılabilir: {pid}")
+    except Exception as e:
+        logger.error(f"Playlist taranırken hata oluştu: {pid}", exc_info=True)
+        unplayables = []
+
+    collected_playlists.append(playlist)
+    if unplayables:
+        collected_tracks.extend(unplayables)
+
+
+def _gather_next_level_playlists(
+    to_scan_playlists: list,
+    visited_owners: set
+) -> list[dict]:
+    """Gather playlists from owners not yet visited."""
+    next_level_owners = set()
+    new_playlists = []
+
+    for playlist in to_scan_playlists:
+        owner = playlist["owner"]
+        if owner not in visited_owners:
+            next_level_owners.add(owner)
+            try:
+                owner_playlists = get_owner_playlists(owner, limit=10)
+                new_playlists.extend(owner_playlists)
+                logger.debug(f"{owner} kullanıcısının diğer playlistleri eklendi.")
+            except Exception as e:
+                logger.error(f"{owner} kullanıcısının playlistleri alınamadı.", exc_info=True)
+
+    visited_owners.update(next_level_owners)
+    return new_playlists
+
+
 def pseudo_recursive_scan(
     artist_name: str,
     current_owner: str,  
@@ -33,7 +83,6 @@ def pseudo_recursive_scan(
         return {"status": "warning", "artist": artist_name, "reason": "Hiç playlist bulunamadı"}
 
     current_depth = 0
-
     collected_playlists = []
     collected_tracks = []
 
@@ -43,40 +92,13 @@ def pseudo_recursive_scan(
                 f"[DEPTH LOG] Şu an {current_depth + 1}. derinlikteyiz / max_depth={max_depth} "
                 f"— taranacak playlist sayısı: {len(to_scan_playlists)}"
             )
-            next_level_owners = set()
-            new_playlists = []
 
             for playlist in to_scan_playlists:
-                pid = playlist["id"]
-                owner = playlist["owner"]
-                logger.debug(f"Playlist taranıyor: {pid} (Owner: {owner})")
+                _scan_playlist_and_collect_results(
+                    playlist, current_owner, market, collected_playlists, collected_tracks
+                )
 
-                try:
-                    unplayables = scan_playlist_for_unplayable_tracks(pid, market=market, owner=current_owner)
-                    if unplayables:
-                        for t in unplayables:
-                            logger.warning(f"[!] Unplayable track bulundu: {t['track_name']} (ID: {t['track_id']})")
-                    else:
-                        logger.info(f"Playlist tamamen oynatılabilir: {pid}")
-                except Exception as e:
-                    logger.error(f"Playlist taranırken hata oluştu: {pid}", exc_info=True)
-
-                # Playlist ve unplayable trackleri topla
-                collected_playlists.append(playlist)
-                if unplayables:
-                    collected_tracks.extend(unplayables)
-
-                if owner not in visited_owners:
-                    next_level_owners.add(owner)
-                    try:
-                        owner_playlists = get_owner_playlists(owner, limit=10)
-                        new_playlists.extend(owner_playlists)
-                        logger.debug(f"{owner} kullanıcısının diğer playlistleri eklendi.")
-                    except Exception as e:
-                        logger.error(f"{owner} kullanıcısının playlistleri alınamadı.", exc_info=True)
-
-            visited_owners.update(next_level_owners)
-            to_scan_playlists = new_playlists
+            to_scan_playlists = _gather_next_level_playlists(to_scan_playlists, visited_owners)
             current_depth += 1
 
         logger.info(f"{artist_name} için tarama işlemi tamamlandı.")
@@ -91,7 +113,7 @@ def pseudo_recursive_scan(
         logger.exception(f"{artist_name} için beklenmeyen hata.")
         return {"status": "error", "artist": artist_name, "reason": str(e)}
     
-def scan_artist_playable_and_save(artist_identifier: str, owner: str | None = None):
+def scan_artist_playable_and_save(artist_identifier: str, owner: str | None = None, market: str | None = None):
     try:
         logger.info("Artist playable taraması başlıyor: %s", artist_identifier)
         result = scan_artist_and_persist_tracks(artist_identifier, owner=owner, market=market)

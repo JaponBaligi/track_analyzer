@@ -11,13 +11,6 @@ type ApiPlaylist = {
   tracks?: any[];
 };
 
-type ApiTrack = {
-  track_id: string;
-  track_name: string;
-  artist_name: string; // Backend tekil string olarak geliyor
-  is_playable: boolean;
-};
-
 export const useSpotifySearch = () => {
   const {
     setLoading,

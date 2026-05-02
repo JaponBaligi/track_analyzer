@@ -1,46 +1,28 @@
 # Spotify Track Analyzer
 
-A comprehensive application for analyzing Spotify track data, consisting of a FastAPI backend API and a React-based web panel frontend. The system provides insights into track popularity, streaming history, playlist monitoring, and artist analytics.
+A FastAPI backend and React (`web_panel`) for Spotify track and playlist monitoring (popularity, stream history, unplayable detection, and related tooling).
+
+**License:** [MIT](LICENSE). See [SECURITY.md](SECURITY.md) for reporting issues.
+
+**Disclaimer:** This software uses Spotify’s APIs and optional community tooling. You are responsible for complying with [Spotify’s Developer Terms](https://developer.spotify.com/terms) and applicable law. Optional components under `isrc-company/` may rely on session-style credentials and unofficial endpoints — review `isrc-company/README.md` before enabling them.
 
 ## 📁 Project Structure
 
 ```
 spotify_monitoring/
-├── api/                          # FastAPI backend
-│   ├── main.py                   # Main FastAPI app
-│   ├── routes/                   # API route handlers
-│   │   ├── artists.py
-│   │   ├── auth.py
-│   │   ├── db_view.py
-│   │   ├── flagged_artists.py
-│   │   ├── playlists.py
-│   │   ├── streams.py
-│   │   └── track_routes.py
-│   ├── schemas/                  # Pydantic models
-│   ├── services/                 # Business logic
-│   └── dependencies.py
-├── config/                       # Configuration files
-│   ├── config.py
-│   └── jwt_generator.py
-├── db/                           # Database models and storage
-├── scheduler/                    # Background task scheduler
-├── scraper/                      # Spotify data scraping
-├── spotify_client/               # Spotify API client
-├── utils/                        # Utilities (logger, db, security)
-├── web_panel/                    # React frontend
-│   ├── src/
-│   │   ├── components/           # Reusable UI components
-│   │   ├── pages/                # Main pages (Home, Tracks, Database, etc.)
-│   │   ├── context/              # React context providers
-│   │   ├── hooks/                # Custom React hooks
-│   │   └── types/                # TypeScript type definitions
-│   ├── public/                   # Static assets
-│   └── package.json
-├── analyzer/                     # Track analysis modules
-├── main.py                       # Root FastAPI entry point
-├── requirements.txt              # Python dependencies
-├── docker-compose.yml            # Docker orchestration
-└── README.md
+├── backend/                 # FastAPI app (run from here: uvicorn api.main:app)
+│   ├── api/
+│   ├── config/              # config.py, .env (not committed — use .env.example)
+│   ├── db/
+│   ├── scheduler/
+│   ├── spotify_client/
+│   └── utils/
+├── web_panel/               # React frontend (CRA)
+├── isrc-company/            # Optional licensor / ISRC helpers — see isrc-company/README.md
+├── main.py                  # Alternate entrypoint (adds backend/ to sys.path)
+├── requirements.txt
+├── LICENSE
+└── SECURITY.md
 ```
 
 ## 🚀 Features
@@ -118,47 +100,42 @@ spotify_monitoring/
 - **React 19** - UI framework
 - **TypeScript** - Type-safe JavaScript
 - **Tailwind CSS** - Utility-first CSS framework
-- **Electron** - Desktop application framework (IN PROGRESS)
 - **Recharts** - Charting library
 - **React Router** - Client-side routing
 
 ### Infrastructure
-- **Docker** - Containerization
-- **Docker Compose** - Multi-container orchestration
-- **GitHub Actions** - CI/CD pipeline (IN PROGRESS)
+- **Docker** — optional; this repository does **not** ship a `docker-compose.yml` yet.
 
 ## 📦 Installation
 
 ### Prerequisites
-- Docker & Docker Compose
-- Python 3.11+ (for local development)
-- Node.js 18+ (for frontend development)
+- Python 3.11+
+- Node.js 18+ (frontend)
+- PostgreSQL (or compatible DB URL in `DATABASE_URL`)
 
-### Quick Start with Docker
+### Local development
+
 ```bash
-# Clone the repository
-git clone https://github.com/JaponBaligi/spotify-track-analyzer.git
-cd spotify-track-analyzer
+git clone <your-fork-or-repo-url> spotify_monitoring
+cd spotify_monitoring
 
-# Start all services
-docker-compose up --build
-(this docker command pretty much does everything)
-# Access the applications:
-# - API: http://localhost:8000
-# - Frontend: http://localhost:3000
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Unix:    source venv/bin/activate
+pip install -r requirements.txt
+
+cp backend/config/.env.example backend/config/.env
+# Edit backend/config/.env — Spotify credentials, DATABASE_URL, JWT_*, USER*_PASSWORD (48 chars each)
+
+cd backend
+uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### Local Development Setup
-```bash
-# Backend setup
-cd spotify-track-analyzer
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+In another terminal:
 
-# Frontend setup
+```bash
 cd web_panel
+cp .env.example .env.local   # optional — defaults target http://localhost:8000/api
 npm install
 npm start
 ```
@@ -166,11 +143,12 @@ npm start
 ## 🔌 API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - User login (if implemented)
+- `POST /api/auth/login` — JWT login (48-character password)
+- Most other `/api/*` routes require `Authorization: Bearer <token>`
 
 ### Artists
-- `POST /api/artists/scan` - Start artist scanning
-- `GET /api/artists/info` - Get artist basic info
+- `POST /api/artists/scan` — Start artist scanning (auth required)
+- `GET /api/artists/info` — Artist metadata (auth required)
 
 ### Playlists
 - `GET /api/playlists/` - List all tracked playlists
@@ -229,19 +207,24 @@ npm start
 
 ## 🎯 Usage Examples
 
+Most `/api/*` routes require a JWT from `POST /api/auth/login`. Pass `Authorization: Bearer <token>` on subsequent requests.
+
 ### Track Analysis
 ```bash
 # Get track stream data
-curl http://localhost:8000/api/streams/4iV5W9uYEdYUVa79Axb7Rh
+curl http://localhost:8000/api/streams/4iV5W9uYEdYUVa79Axb7Rh \
+  -H "Authorization: Bearer YOUR_JWT"
 
-# Get track popularity
-curl http://localhost:8000/api/tracks/4iV5W9uYEdYUVa79Axb7Rh/popularity
+# Get track popularity (if exposed in your deployment)
+curl http://localhost:8000/api/tracks/4iV5W9uYEdYUVa79Axb7Rh/popularity \
+  -H "Authorization: Bearer YOUR_JWT"
 ```
 
 ### Artist Monitoring
 ```bash
 # Start artist scan
 curl -X POST http://localhost:8000/api/artists/scan \
+  -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{"artist_name": "Taylor Swift", "region": "US"}'
 ```
@@ -249,48 +232,49 @@ curl -X POST http://localhost:8000/api/artists/scan \
 ### Playlist Monitoring
 ```bash
 # List all playlists
-curl http://localhost:8000/api/playlists/
+curl http://localhost:8000/api/playlists/ \
+  -H "Authorization: Bearer YOUR_JWT"
 
 # Get unplayable tracks
-curl http://localhost:8000/api/playlists/37i9dQZF1DXcBWIGoYBM5M/unplayable-tracks
+curl http://localhost:8000/api/playlists/37i9dQZF1DXcBWIGoYBM5M/unplayable-tracks \
+  -H "Authorization: Bearer YOUR_JWT"
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
-Create a `.env` file with:
+Copy `backend/config/.env.example` to `backend/config/.env` and set at least:
+
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+- `DATABASE_URL`
+- `JWT_SECRET`, `JWT_ALGORITHM` (e.g. `HS256`)
+- `USER1_PASSWORD`, `USER2_PASSWORD` — **exactly 48 characters** each (used by `POST /api/auth/login`)
+
+Optional / operational:
+
 ```bash
-# Spotify API
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost/spotify_analyzer
 REDIS_URL=redis://localhost:6379
-
-# Scheduler
 SCHEDULER_INTERVAL_MINUTES=60
+ISRC_SERVICE_URL=http://127.0.0.1:1337/get_licensor
+SOUNDCHARTS_API_KEY=
 ```
 
-### Docker Environment
-The application uses Docker Compose for easy setup:
-- **Backend**: FastAPI on port 8000
-- **Frontend**: React on port 3000
-- **Database**: PostgreSQL
-- **Cache**: Redis
+**Production CORS:** set `ENVIRONMENT=prod` and comma-separated `ALLOWED_ORIGINS` (wildcard `*` is not allowed in prod). See `backend/config/config.py`.
+
+Optional **`isrc-company/`** env: copy `isrc-company/config/.env.example` to `isrc-company/config/.env`.
 
 ## 🧪 Testing
 
 ### Backend Tests
 ```bash
-cd spotify-track-analyzer
-pytest tests/
+cd backend
+pytest   # add tests/ under backend when present
 ```
 
 ### Frontend Tests
 ```bash
 cd web_panel
-npm test (never used but could've been useful)
+npm test
 ```
 
 ## 📈 Monitoring & Logging

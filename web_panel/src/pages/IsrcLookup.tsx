@@ -105,7 +105,7 @@ export default function SpotifyLookup() {
       )}
 
       <div className="mt-12 text-center text-gray-500 text-sm">
-        © Spotify Track Analyzer
+        © {new Date().getFullYear()} Spotify Track Analyzer
       </div>
     </div>
   );

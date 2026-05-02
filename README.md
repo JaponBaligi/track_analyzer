@@ -1,10 +1,22 @@
 # Spotify Track Analyzer
 
+[![CI](https://github.com/JaponBaligi/track_analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/JaponBaligi/track_analyzer/actions/workflows/ci.yml)
+
 A FastAPI backend and React (`web_panel`) for Spotify track and playlist monitoring (popularity, stream history, unplayable detection, and related tooling).
 
 **License:** [MIT](LICENSE). See [SECURITY.md](SECURITY.md) for reporting issues.
 
 **Disclaimer:** This software uses Spotify’s APIs and optional community tooling. You are responsible for complying with [Spotify’s Developer Terms](https://developer.spotify.com/terms) and applicable law. Optional components under `isrc-company/` may rely on session-style credentials and unofficial endpoints — review `isrc-company/README.md` before enabling them.
+
+**Upstream repository:** [github.com/JaponBaligi/track_analyzer](https://github.com/JaponBaligi/track_analyzer)
+
+### Going public on GitHub
+
+1. **Settings → General → Danger zone → Change repository visibility → Public** (after you accept GitHub’s warnings).
+2. **Settings → Security** — enable dependency review / Dependabot if you want automated alerts (this repo includes a Dependabot config).
+3. Confirm **default branch** is `main` and it matches the history you intend to publish.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for forks and PRs.
 
 ## 📁 Project Structure
 
@@ -22,7 +34,8 @@ spotify_monitoring/
 ├── main.py                  # Alternate entrypoint (adds backend/ to sys.path)
 ├── requirements.txt
 ├── LICENSE
-└── SECURITY.md
+├── SECURITY.md
+└── CONTRIBUTING.md
 ```
 
 ## 🚀 Features
@@ -116,7 +129,7 @@ spotify_monitoring/
 ### Local development
 
 ```bash
-git clone <your-fork-or-repo-url> spotify_monitoring
+git clone https://github.com/JaponBaligi/track_analyzer.git spotify_monitoring
 cd spotify_monitoring
 
 python -m venv venv

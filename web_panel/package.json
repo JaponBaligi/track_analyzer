@@ -1,6 +1,7 @@
 {
   "name": "web_panel",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "main": "src/index.tsx",
   "proxy": "http://localhost:1337",

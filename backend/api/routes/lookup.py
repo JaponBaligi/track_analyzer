@@ -1,7 +1,8 @@
 # api/routes/lookup.py
 import os
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from api.dependencies import get_current_user
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from db.track_storage import TrackStorage
@@ -36,7 +37,7 @@ def _fetch_lookup_data_from_service(track_id: str) -> tuple[str, str]:
 
 
 @router.post("/save")
-def save_lookup(req: LookupSaveRequest):
+def save_lookup(req: LookupSaveRequest, _owner: str = Depends(get_current_user)):
     storage = TrackStorage()
     try:
         licensor = (req.licensor_name or "").strip()
@@ -57,7 +58,7 @@ def save_lookup(req: LookupSaveRequest):
         storage.close()
 
 @router.get("/whitelist")
-def get_whitelist():
+def get_whitelist(_owner: str = Depends(get_current_user)):
     storage = TrackStorage()
     try:
         whitelist = {"distrokid", "toolost", "tunecore", "landr", "dittomusic", "labelengine", "amuse"}
@@ -75,7 +76,7 @@ def get_whitelist():
         storage.close()
 
 @router.delete("/whitelist/delete_bulk")
-def delete_whitelist_bulk(req: BulkDeleteRequest):
+def delete_whitelist_bulk(req: BulkDeleteRequest, _owner: str = Depends(get_current_user)):
     storage = TrackStorage()
     try:
         ids = req.ids or []
@@ -100,7 +101,7 @@ def delete_whitelist_bulk(req: BulkDeleteRequest):
         storage.close()
 
 @router.delete("/whitelist/{track_id}")
-def delete_whitelist_item(track_id: str):
+def delete_whitelist_item(track_id: str, _owner: str = Depends(get_current_user)):
     storage = TrackStorage()
     try:
         # desteklenen method isimleri için esnek fallback

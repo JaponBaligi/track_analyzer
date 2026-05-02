@@ -3,13 +3,38 @@ const fs = require('fs');
 const path = require('path');
 const schedule = require('node-schedule');
 
-const tokenPath = path.resolve(__dirname, '..', '..', 'config', 'auth_tokens.txt');
+const configDir = path.resolve(__dirname, '..', '..', 'config');
+const envPath = path.join(configDir, '.env');
+
+function upsertEnvVar(filePath, key, value) {
+  let lines = [];
+  try {
+    lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+  } catch (e) {
+    lines = [];
+  }
+  const prefix = `${key}=`;
+  const filtered = lines.filter((line) => {
+    const t = line.trimStart();
+    return t.length > 0 && !t.startsWith(prefix);
+  });
+  const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  filtered.push(`${key}="${escaped}"`);
+  if (!fs.existsSync(path.dirname(filePath))) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  }
+  fs.writeFileSync(filePath, filtered.join('\n') + '\n', { encoding: 'utf8' });
+}
 
 let browser;
 let page;
 let isRunning = true;
 
 async function initializeBrowser() {
+  const chrome =
+    process.env.CHROME_PATH ||
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    undefined;
   browser = await puppeteer.launch({
     headless: false,
     userDataDir: './chrome_session',
@@ -19,7 +44,7 @@ async function initializeBrowser() {
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage'
     ],
-    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    ...(chrome ? { executablePath: chrome } : {}),
   });
 
   page = await browser.newPage();
@@ -34,12 +59,11 @@ function interceptRequests(request) {
     const authHeader = request.headers()['authorization'];
     if (authHeader && authHeader.startsWith('Bearer')) {
       try {
-        const dir = path.dirname(tokenPath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true });
         }
-        fs.writeFileSync(tokenPath, authHeader, { encoding: 'utf8' });
-        console.log(`[${new Date().toLocaleTimeString()}] Token güncellendi -> ${authHeader.slice(0, 20)}... (yazıldı: ${tokenPath})`);
+        upsertEnvVar(envPath, 'SPOTIFY_WEB_AUTHORIZATION', authHeader);
+        console.log(`[${new Date().toLocaleTimeString()}] SPOTIFY_WEB_AUTHORIZATION güncellendi -> ${authHeader.slice(0, 20)}... (${envPath})`);
       } catch (err) {
         console.error('Token yazma hatası:', err);
       }

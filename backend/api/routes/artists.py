@@ -39,7 +39,7 @@ async def scan_artist(request: ArtistScanRequest, owner: str= Depends(get_curren
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/info", response_model=ArtistInfoResponse)
-async def get_artist_basic_info(artist_name: str):
+async def get_artist_basic_info(artist_name: str, _owner: str = Depends(get_current_user)):
     try:
         logger.debug(f"Fetching info for artist: {artist_name}")
         artist_data = get_artist_info(artist_name)

@@ -1,10 +1,12 @@
-fetch("https://spclient.wg.spotify.com/metadata/4/track/58ec23e98db64a3cb89bad1191fc38c5?market=from_token", {
+// Example browser-style request shape. Fill values from isrc-company/config/.env (gitignored):
+//   SPOTIFY_WEB_AUTHORIZATION, SPOTIFY_WEB_CLIENT_TOKEN, SPOTIFY_SPCLIENT_TRACK_URL_TEMPLATE ({gid} → track hex id)
+fetch("<TRACK_METADATA_URL_FROM_LOCAL_ENV>", {
   "headers": {
     "accept": "application/json",
     "accept-language": "tr",
     "app-platform": "WebPlayer",
-    "authorization": "Bearer BQBFPkIagO5zhRSDatr_AiUUMI-IKG9Ra42uPXTWSupXMmGz7Z5ZcSaxF0khRcIt8dliyQB_NSxHz05E1iPqCkZjVoL6ApJUcRv-haTnnNzHx1MtV22UjJfUY34RgS8TvgEEqnaVlwMzvUnNq2jOQ-anJe82jTSAPOIA-0rKFhEODzptlv26bsFFsCcTBjHRwEtgW4eMnLBLag4nFSc6bftYTxUoKVIG3UdBDe-UCToXcJtuSgStLEuvICnVOhm9mgmNABLtkI85Izag_dijCVMvP5QlWJw-bY8OdBja-2CdMxYk_PGf8o4ZKhzFtUsio0AlhAMkhjGxqlltVuE9vYwb9wKUoaWNS1dO1TMIUZtwMMgCx0C3CsyO-TQ6IA",
-    "client-token": "AABJTx/2rjr1mTtLJDMx3VBXKbCY8R0yKyHhQJ74PGC6NviMgX9y5LbIjNbeLI2pxdfKxK8hAlEWTOoQYyxDJfYL+DyPixSjCHevSzZnbgUTRNRkS4KRwQXxGZVoIHBybOz3nwoW72ygZYS2gu78RJK34NVgRwKkZ49OeUFRgZwxCqXzjaLWz3+rg/dQXfWZLujJPssT/ivSMVd6ZmtGEZOcUsNO2arFa66G9eJL44toXezL+hSHrwmGK5eGZ60TO41pYrC2xe+rjyCVtsGxE/Z2A8AMXUexqc3iOM8uCg==",
+    "authorization": "<SPOTIFY_WEB_AUTHORIZATION>",
+    "client-token": "<SPOTIFY_WEB_CLIENT_TOKEN>",
     "if-none-match": "\"MC-CnwhKQ==\"",
     "priority": "u=1, i",
     "sec-ch-ua": "\"Google Chrome\";v=\"135\", \"Not-A.Brand\";v=\"8\", \"Chromium\";v=\"135\"",

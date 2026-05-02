@@ -10,11 +10,16 @@ import subprocess
 import atexit
 from datetime import datetime
 
+from isrc_env import (
+    get_web_authorization,
+    get_web_client_token,
+    get_spclient_track_metadata_url,
+)
+
 app = Flask(__name__)
 
 # Configuration
 BASE_DIR = os.path.dirname(__file__)
-AUTH_TOKEN_FILE = os.path.join(BASE_DIR, "..", "config", "auth_tokens.txt")
 DATABASE_FILE = os.path.join(BASE_DIR, "..", "data", "licensor_db.json")
 
 puppeteer_process = None
@@ -42,32 +47,32 @@ def load_database():
             return {}
     return {}
 
-def get_auth_token():
-    try:
-        with open(AUTH_TOKEN_FILE, 'r', encoding='utf-8') as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        print(f"Error: {AUTH_TOKEN_FILE} file not found!")
-        return None
-
 def media_id_to_gid(media_id: str) -> str:
     return hex(base62.decode(media_id, charset=base62.CHARSET_INVERTED))[2:].zfill(32)
 
 def get_track_details(track_id: str):
-    auth_token = get_auth_token()
-    if not auth_token:
+    auth_token = get_web_authorization()
+    client_token = get_web_client_token()
+    if not auth_token or not client_token:
         return None, None, None, None
 
     gid = media_id_to_gid(track_id)
+    url = get_spclient_track_metadata_url(gid)
+    if not url:
+        print(
+            "Error: SPOTIFY_SPCLIENT_TRACK_URL_TEMPLATE missing or invalid "
+            "(config/.env — see .env.example; must include {gid})."
+        )
+        return None, None, None, None
+
     headers = {
         "accept": "application/json",
         "accept-language": "tr",
         "app-platform": "WebPlayer",
         "authorization": auth_token,
-        "client-token": "AADJvCgjaLmb1gq+eIg+TAIjDX1E/LLmFZ4nZxOH8EB/03TJA/B6UkKPwVutc2QRBnbcCczggEy0/kndqZGtKDJnxv6WJNNSK7e6xM9fZnGC/nB/0dOSIUYBd7oOC5dehYwW70nopP3X01iabXIkzXXZVts3q4DtmwJDSwh88Kww25UvJ/gz/AexVOAlaqV9vJ5x0ppd7LVlEMN38liQAt6uGUzCNyTr67ZZfYmeJKRZhowTyQT7spEvzJpgnT5eyDVs9IdapvagqQNew7THlDxH9CY0OqcSVS1yg1/OLSjG9ejQ2FmtOjuohlE5blngHLJtDto02eMrAHiHWsTu/EiCwzcdCQ\u003d\u003d",
+        "client-token": client_token,
         "referer": "https://open.spotify.com/",
     }
-    url = f"https://spclient.wg.spotify.com/metadata/4/track/{gid}?market=from_token"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()

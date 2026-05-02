@@ -10,8 +10,9 @@ Auxiliary tools for licensor metadata lookup via Spotify web-client flows. This 
 
 ## Components
 
-- `py/se3x.py` — Flask UI + metadata helpers (often port `1337`).
+- `py/licensor_lookup_server.py` — Flask UI + metadata helpers (default port `1337`).
 - `py/adder.py` — CLI to maintain `data/licensor_db.json`.
 - `backend/js/token_collector.js` — Puppeteer helper; set `CHROME_PATH` (or `PUPPETEER_EXECUTABLE_PATH`) if Chrome is not in the default location.
+- `misc/browser_metadata_request_example.js` — commented example of the request shape the stack imitates (values from `.env` only).
 
 Using unofficial Spotify endpoints may conflict with Spotify’s terms of service; use at your own risk.

@@ -6,7 +6,6 @@ import { NormalizedTrack, normalizeList } from "../types/Whitetype";
 import { useNavigate } from "react-router-dom";
 import { getStreamErrorMessage } from "../utils/streamErrors";
 import { WhitelistTrackCard } from "../components/whitelist/WhitelistTrackCard";
-import { getTrackId } from "../utils/trackHelpers";
 
 export default function Whitelist() {
   const [tracks, setTracks] = useState<NormalizedTrack[]>([]);

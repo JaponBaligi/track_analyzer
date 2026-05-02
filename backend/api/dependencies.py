@@ -18,7 +18,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
     payload = decode_token(token)
     
     if not payload:
-        logger.warning(f"Authentication failed: Token decode failed (token: {token[:20]}...)")
+        logger.warning("Authentication failed: Token decode failed")
         raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token.")
     
     if "sub" not in payload:

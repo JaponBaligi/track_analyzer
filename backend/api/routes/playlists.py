@@ -1,6 +1,7 @@
 # api/routes/playlists.py
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from api.dependencies import get_current_user
 from api.services.playlist_service import (
     get_all_playlists,
     get_unplayable_tracks_by_playlist,
@@ -12,7 +13,7 @@ logger = get_logger(__name__)
 
 
 @router.get("/", summary="List all tracked playlists")
-def list_playlists() -> list[dict]:
+def list_playlists(_owner: str = Depends(get_current_user)) -> list[dict]:
     """
     Veritabanında izlenen tüm çalma listelerini döner.
 
@@ -31,7 +32,7 @@ def list_playlists() -> list[dict]:
 
 
 @router.get("/{playlist_id}/unplayable-tracks", summary="List unplayable tracks in a playlist")
-def list_unplayable_tracks(playlist_id: str) -> list[dict]:
+def list_unplayable_tracks(playlist_id: str, _owner: str = Depends(get_current_user)) -> list[dict]:
     """
     Belirli bir playlist içinde artık çalınamayan (silinmiş veya gizlenmiş) şarkıları döner.
 

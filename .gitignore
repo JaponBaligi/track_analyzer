@@ -273,3 +273,10 @@ temp/
 
 pass1
 pass2
+
+# isrc-company local secrets & generated data (templates are *.example.* / .env.example)
+isrc-company/config/.env
+isrc-company/config/auth_tokens.txt
+isrc-company/config/api_keys.json
+isrc-company/data/licensor_db.json
+isrc-company/**/chrome_session/

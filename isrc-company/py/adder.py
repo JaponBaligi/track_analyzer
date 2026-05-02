@@ -4,9 +4,15 @@ import json
 import os
 from datetime import datetime
 
+from isrc_env import (
+    get_web_authorization,
+    get_web_client_token,
+    get_spclient_track_metadata_url,
+)
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Database file - sadece UUID:name çiftleri tutulacak
-DATABASE_FILE = "data/licensor_db.json"
-AUTH_TOKEN_FILE = "config/auth_tokens.txt"
+DATABASE_FILE = os.path.normpath(os.path.join(_BASE_DIR, "..", "data", "licensor_db.json"))
 
 def load_database():
     """Sadece licensor veritabanını yükle"""
@@ -23,38 +29,38 @@ def save_database(db):
     with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
         json.dump(db, f, indent=2, ensure_ascii=False)
 
-def get_auth_token():
-    """auth_token.txt'den authorization token'ı oku"""
-    try:
-        with open(AUTH_TOKEN_FILE, 'r', encoding='utf-8') as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        print(f"Hata: {AUTH_TOKEN_FILE} dosyası bulunamadı!")
-        print("Lütfen önce Node.js scriptini çalıştırarak token oluşturun.")
-        return None
-
 def media_id_to_gid(media_id: str) -> str:
     """Track ID'yi GID'ye çevir"""
     return hex(base62.decode(media_id, charset=base62.CHARSET_INVERTED))[2:].zfill(32)
 
 def get_licensor_uuid(track_id: str):
     """API'den licensor UUID'sini al"""
-    auth_token = get_auth_token()
+    auth_token = get_web_authorization()
+    client_token = get_web_client_token()
     if not auth_token:
+        print("Hata: SPOTIFY_WEB_AUTHORIZATION eksik (config/.env — bkz. .env.example).")
+        return None
+    if not client_token:
+        print("Hata: SPOTIFY_WEB_CLIENT_TOKEN eksik (config/.env — bkz. .env.example).")
         return None
 
     gid = media_id_to_gid(track_id)
-    
+    url = get_spclient_track_metadata_url(gid)
+    if not url:
+        print(
+            "Hata: SPOTIFY_SPCLIENT_TRACK_URL_TEMPLATE eksik veya geçersiz "
+            "(config/.env — bkz. .env.example; `{gid}` içermeli)."
+        )
+        return None
+
     headers = {
         "accept": "application/json",
         "accept-language": "tr",
         "app-platform": "WebPlayer",
         "authorization": auth_token,
-        <redacted_client_token>
+        "client-token": client_token,
         "referer": "https://open.spotify.com/",
     }
-    
-    url = f"https://example.invalid/metadata/4/track/{gid}?market=from_token"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()

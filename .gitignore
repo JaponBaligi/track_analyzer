@@ -32,6 +32,8 @@ venv.bak/
 .env
 .env.local
 .env.*.local
+**/prod.env
+**/prod.env.*
 
 # IDE
 .vscode/

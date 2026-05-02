@@ -212,7 +212,7 @@ npm start
 
 ## 🎯 Usage Examples
 
-Most `/api/*` routes require a JWT from `POST /api/auth/login`. Pass `Authorization: Bearer <token>` on subsequent requests.
+Most `/api/*` routes require a JWT from `POST /api/auth/login`. Export it for curl, e.g. `export JWT_TOKEN='…'` (paste the access token only).
 
 ### Track Analysis
 ```bash
